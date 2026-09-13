@@ -1,0 +1,32 @@
+[Unit]
+Description=HyprWall — Wallpaper Manager Daemon
+Documentation=https://github.com/your-username/hyprwall
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/lib/hyprwall/hyprwall-daemon.py --config %C/hyprwall/config.toml --ui-dir /usr/local/lib/hyprwall/ui
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%C/hyprwall %h/.cache/hyprwall %h/.local/state/hyprwall
+PrivateTmp=true
+
+# Environment
+Environment=XDG_CONFIG_HOME=%C
+Environment=XDG_CACHE_HOME=%h/.cache
+Environment=XDG_STATE_HOME=%h/.local/state
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=hyprwall
+
+[Install]
+WantedBy=graphical-session.target

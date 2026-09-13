@@ -1,0 +1,407 @@
+#!/usr/bin/env bash
+# ============================================================
+# HyprWall CLI — Command-line interface for HyprWall daemon
+# ============================================================
+set -euo pipefail
+
+VERSION="0.1.0"
+DAEMON_PORT="${HYPRWALL_PORT:-9520}"
+DAEMON_HOST="${HYPRWALL_HOST:-127.0.0.1}"
+DAEMON_URL="http://${DAEMON_HOST}:${DAEMON_PORT}"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hyprwall"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/hyprwall"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hyprwall"
+DAEMON_SCRIPT="/usr/local/lib/hyprwall/hyprwall-daemon.py"
+PID_FILE="${STATE_DIR}/hyprwall.pid"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+# ============================================================
+# Helper Functions
+# ============================================================
+
+log_info() { echo -e "${GREEN}[INFO]${NC} $*"; }
+log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
+
+api_get() {
+    curl -s "${DAEMON_URL}/api/$1" 2>/dev/null || echo '{"error":"daemon not reachable"}'
+}
+
+api_post() {
+    local endpoint="$1"
+    local data="$2"
+    curl -s -X POST "${DAEMON_URL}/api/${endpoint}" \
+        -H "Content-Type: application/json" \
+        -d "$data" 2>/dev/null || echo '{"error":"daemon not reachable"}'
+}
+
+is_daemon_running() {
+    if [ -f "$PID_FILE" ]; then
+        local pid
+        pid=$(cat "$PID_FILE")
+        if kill -0 "$pid" 2>/dev/null; then
+            return 0
+        fi
+    fi
+    # Also check if port is in use
+    if curl -s --connect-timeout 1 "${DAEMON_URL}/api/status" >/dev/null 2>&1; then
+        return 0
+    fi
+    return 1
+}
+
+ensure_dirs() {
+    mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$STATE_DIR"
+}
+
+# ============================================================
+# Commands
+# ============================================================
+
+cmd_start() {
+    if is_daemon_running; then
+        log_warn "Daemon is already running"
+        return 0
+    fi
+
+    ensure_dirs
+
+    local config_file="${CONFIG_DIR}/config.toml"
+    local daemon_cmd="python3"
+
+    if [ -f "$DAEMON_SCRIPT" ]; then
+        nohup $daemon_cmd "$DAEMON_SCRIPT" \
+            --config "$config_file" \
+            --port "$DAEMON_PORT" \
+            --ui-dir "/usr/local/lib/hyprwall/ui" \
+            > "${STATE_DIR}/hyprwall.log" 2>&1 &
+        echo $! > "$PID_FILE"
+        log_info "Daemon started (PID: $(cat "$PID_FILE"))"
+        log_info "Web UI: http://localhost:${DAEMON_PORT}"
+    else
+        log_error "Daemon script not found at $DAEMON_SCRIPT"
+        log_info "Run 'hyprwall install' first"
+        return 1
+    fi
+}
+
+cmd_stop() {
+    if ! is_daemon_running; then
+        log_warn "Daemon is not running"
+        return 0
+    fi
+
+    if [ -f "$PID_FILE" ]; then
+        kill "$(cat "$PID_FILE")" 2>/dev/null || true
+        rm -f "$PID_FILE"
+    fi
+
+    # Also kill by port
+    local pid
+    pid=$(lsof -ti:"$DAEMON_PORT" 2>/dev/null || true)
+    if [ -n "$pid" ]; then
+        kill "$pid" 2>/dev/null || true
+    fi
+
+    log_info "Daemon stopped"
+}
+
+cmd_restart() {
+    cmd_stop
+    sleep 1
+    cmd_start
+}
+
+cmd_status() {
+    echo -e "${BOLD}╔══════════════════════════════════════╗${NC}"
+    echo -e "${BOLD}║      HyprWall v${VERSION}                  ║${NC}"
+    echo -e "${BOLD}╚══════════════════════════════════════╝${NC}"
+    echo ""
+
+    if is_daemon_running; then
+        echo -e "  Daemon:    ${GREEN}● Running${NC}"
+        local status
+        status=$(api_get "status")
+        local backend
+        backend=$(echo "$status" | python3 -c "import sys,json; print(json.load(sys.stdin).get('backend','unknown'))" 2>/dev/null || echo "unknown")
+        local wp_count
+        wp_count=$(echo "$status" | python3 -c "import sys,json; print(json.load(sys.stdin).get('wallpaper_count',0))" 2>/dev/null || echo "0")
+        echo -e "  Backend:   ${CYAN}${backend}${NC}"
+        echo -e "  Wallpapers: ${wp_count}"
+    else
+        echo -e "  Daemon:    ${RED}● Stopped${NC}"
+        echo ""
+        echo -e "  Run ${CYAN}hyprwall start${NC} to start the daemon"
+    fi
+    echo ""
+
+    # Environment check
+    echo -e "${BOLD}Environment:${NC}"
+    [ -n "${WAYLAND_DISPLAY:-}" ] && echo -e "  Wayland:   ${GREEN}✓${NC}" || echo -e "  Wayland:   ${RED}✗${NC}"
+    [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && echo -e "  Hyprland:  ${GREEN}✓${NC}" || echo -e "  Hyprland:  ${RED}✗${NC}"
+    command -v nvidia-smi &>/dev/null && echo -e "  NVIDIA:    ${GREEN}✓${NC}" || echo -e "  NVIDIA:    ${RED}✗${NC}"
+    echo ""
+}
+
+cmd_monitors() {
+    local result
+    result=$(api_get "monitors")
+
+    echo -e "${BOLD}Connected Monitors:${NC}"
+    echo ""
+    echo "$result" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+monitors = data.get('monitors', [])
+if not monitors:
+    print('  No monitors detected (is Hyprland running?)')
+    sys.exit(0)
+for m in monitors:
+    name = m.get('name', 'unknown')
+    w = m.get('width', '?')
+    h = m.get('height', '?')
+    rr = m.get('refreshRate', '?')
+    focused = '★' if m.get('focused') else ' '
+    wp = m.get('currentWallpaper', 'none')
+    print(f'  {focused} {name}')
+    print(f'    Resolution: {w}x{h} @ {rr}Hz')
+    print(f'    Wallpaper:  {wp}')
+    print()
+" 2>/dev/null || log_error "Failed to parse monitor data"
+}
+
+cmd_set() {
+    local monitor="${1:-}"
+    local path="${2:-}"
+
+    if [ -z "$monitor" ] || [ -z "$path" ]; then
+        log_error "Usage: hyprwall set <monitor> <path>"
+        log_info "Example: hyprwall set eDP-1 ~/Wallpapers/image.jpg"
+        return 1
+    fi
+
+    # Resolve path
+    path=$(realpath "$path" 2>/dev/null || echo "$path")
+
+    if [ ! -f "$path" ]; then
+        log_error "File not found: $path"
+        return 1
+    fi
+
+    local result
+    result=$(api_post "wallpaper/set" "{\"monitor\":\"$monitor\",\"path\":\"$path\"}")
+
+    local success
+    success=$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('success',False))" 2>/dev/null || echo "False")
+
+    if [ "$success" = "True" ]; then
+        log_info "Wallpaper set: $monitor -> $(basename "$path")"
+    else
+        local error
+        error=$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('error','unknown'))" 2>/dev/null || echo "unknown")
+        log_error "Failed: $error"
+        return 1
+    fi
+}
+
+cmd_next() {
+    local monitor="${1:-}"
+    local data="{}"
+    [ -n "$monitor" ] && data="{\"monitor\":\"$monitor\"}"
+
+    local result
+    result=$(api_post "wallpaper/next" "$data")
+
+    local success
+    success=$(echo "$result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('success',False))" 2>/dev/null || echo "False")
+
+    if [ "$success" = "True" ]; then
+        log_info "Switched to next wallpaper"
+    else
+        log_error "Failed to switch wallpaper"
+        return 1
+    fi
+}
+
+cmd_list() {
+    local result
+    result=$(api_get "wallpapers")
+
+    echo -e "${BOLD}Wallpaper Library:${NC}"
+    echo ""
+    echo "$result" | python3 -c "
+import sys, json, os
+data = json.load(sys.stdin)
+wallpapers = data.get('wallpapers', [])
+if not wallpapers:
+    print('  No wallpapers found')
+    sys.exit(0)
+for wp in wallpapers:
+    name = wp.get('name', '?')
+    path = wp.get('path', '?')
+    wtype = wp.get('type', '?')
+    size = wp.get('size', 0)
+    size_mb = size / (1024*1024) if size else 0
+    icon = '🎬' if wtype == 'video' else '🖼'
+    print(f'  {icon} {name}')
+    print(f'     {path} ({size_mb:.1f} MB)')
+" 2>/dev/null || log_error "Failed to parse wallpaper data"
+}
+
+cmd_system() {
+    local result
+    result=$(api_get "system")
+
+    echo -e "${BOLD}System Information:${NC}"
+    echo ""
+    echo "$result" | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+print(f'  Hostname:  {data.get(\"hostname\", \"?\")}')
+print(f'  CPU:       {data.get(\"cpu\", \"?\")}')
+print(f'  GPU:       {data.get(\"gpu\", \"?\")}')
+print(f'  Wayland:   {\"✓\" if data.get(\"wayland\") else \"✗\"}')
+print(f'  Hyprland:  {\"✓\" if data.get(\"hyprland\") else \"✗\"}')
+print(f'  NVIDIA:    {\"✓\" if data.get(\"nvidia\") else \"✗\"}')
+print(f'  CUDA:      {\"✓\" if data.get(\"cuda\") else \"✗\"}')
+print()
+print('  Tools:')
+tools = data.get('tools', {})
+for name, installed in tools.items():
+    status = '✓' if installed else '✗'
+    print(f'    {status} {name}')
+print()
+monitors = data.get('monitors', [])
+print(f'  Monitors ({len(monitors)}):')
+for m in monitors:
+    print(f'    {m.get(\"name\",\"?\")} - {m.get(\"width\",\"?\")}x{m.get(\"height\",\"?\")} @ {m.get(\"refreshRate\",\"?\")}Hz')
+" 2>/dev/null || log_error "Failed to get system info"
+}
+
+cmd_ui() {
+    if ! is_daemon_running; then
+        log_warn "Daemon not running, starting..."
+        cmd_start
+        sleep 2
+    fi
+
+    log_info "Opening HyprWall UI at ${DAEMON_URL}"
+
+    # Try to open in browser
+    if command -v xdg-open &>/dev/null; then
+        xdg-open "${DAEMON_URL}" 2>/dev/null &
+    elif command -v firefox &>/dev/null; then
+        firefox "${DAEMON_URL}" 2>/dev/null &
+    else
+        echo -e "  Open ${CYAN}${DAEMON_URL}${NC} in your browser"
+    fi
+}
+
+cmd_install() {
+    log_info "Installing HyprWall..."
+    ensure_dirs
+
+    # Install daemon
+    local install_dir="/usr/local/lib/hyprwall"
+    sudo mkdir -p "$install_dir"
+    sudo cp "$(dirname "$0")/backend/hyprwall-daemon.py" "$install_dir/"
+    sudo chmod +x "$install_dir/hyprwall-daemon.py"
+
+    # Install config if not exists
+    if [ ! -f "${CONFIG_DIR}/config.toml" ]; then
+        cp "$(dirname "$0")/config/config.toml.example" "${CONFIG_DIR}/config.toml"
+        log_info "Config created at ${CONFIG_DIR}/config.toml"
+    fi
+
+    # Install systemd service
+    local systemd_dir="${HOME}/.config/systemd/user"
+    mkdir -p "$systemd_dir"
+    cp "$(dirname "$0")/systemd/hyprwall.service" "$systemd_dir/"
+    systemctl --user daemon-reload
+
+    log_info "Installation complete!"
+    log_info "Run 'hyprwall start' or 'systemctl --user start hyprwall'"
+}
+
+cmd_uninstall() {
+    log_warn "Uninstalling HyprWall..."
+
+    cmd_stop 2>/dev/null || true
+    systemctl --user stop hyprwall.service 2>/dev/null || true
+    systemctl --user disable hyprwall.service 2>/dev/null || true
+
+    sudo rm -f /usr/local/bin/hyprwall
+    sudo rm -rf /usr/local/lib/hyprwall
+    rm -f "${HOME}/.config/systemd/user/hyprwall.service"
+    systemctl --user daemon-reload
+
+    log_info "HyprWall uninstalled"
+    log_info "Config and cache preserved at:"
+    log_info "  ${CONFIG_DIR}"
+    log_info "  ${CACHE_DIR}"
+}
+
+cmd_help() {
+    echo -e "${BOLD}HyprWall v${VERSION} — Wallpaper Manager for Hyprland${NC}"
+    echo ""
+    echo -e "${BOLD}Usage:${NC} hyprwall <command> [options]"
+    echo ""
+    echo -e "${BOLD}Commands:${NC}"
+    echo "  start              Start the daemon"
+    echo "  stop               Stop the daemon"
+    echo "  restart            Restart the daemon"
+    echo "  status             Show daemon status"
+    echo "  monitors           List connected monitors"
+    echo "  set <mon> <path>   Set wallpaper for monitor"
+    echo "  next [monitor]     Switch to next wallpaper"
+    echo "  list               List available wallpapers"
+    echo "  system             Show system information"
+    echo "  ui                 Open web interface"
+    echo "  install            Install daemon and service"
+    echo "  uninstall          Remove HyprWall"
+    echo "  help               Show this help"
+    echo ""
+    echo -e "${BOLD}Environment Variables:${NC}"
+    echo "  HYPRWALL_PORT      Daemon port (default: 9520)"
+    echo "  HYPRWALL_HOST      Daemon host (default: 127.0.0.1)"
+    echo ""
+    echo -e "${BOLD}Examples:${NC}"
+    echo "  hyprwall start"
+    echo "  hyprwall set eDP-1 ~/Wallpapers/image.jpg"
+    echo "  hyprwall next"
+    echo "  hyprwall ui"
+    echo ""
+}
+
+# ============================================================
+# Main
+# ============================================================
+
+case "${1:-help}" in
+    start)      cmd_start ;;
+    stop)       cmd_stop ;;
+    restart)    cmd_restart ;;
+    status)     cmd_status ;;
+    monitors)   cmd_monitors ;;
+    set)        shift; cmd_set "$@" ;;
+    next)       shift; cmd_next "$@" ;;
+    list|ls)    cmd_list ;;
+    system|sys) cmd_system ;;
+    ui|web)     cmd_ui ;;
+    install)    cmd_install ;;
+    uninstall)  cmd_uninstall ;;
+    help|--help|-h) cmd_help ;;
+    version|--version|-v) echo "HyprWall v${VERSION}" ;;
+    *)
+        log_error "Unknown command: $1"
+        cmd_help
+        exit 1
+        ;;
+esac

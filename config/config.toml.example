@@ -1,0 +1,55 @@
+# HyprWall Configuration
+# ~/.config/hyprwall/config.toml
+
+[general]
+# Backend: "auto", "hyprpaper", "swww", "mpv"
+# auto = prefer hyprpaper, fallback to swww/mpv
+backend = "auto"
+
+# Cache directory for thumbnails and previews
+cache_dir = "~/.cache/hyprwall"
+
+# Start daemon automatically on login
+auto_start = true
+
+[performance]
+# Enable hardware acceleration (VA-API / CUDA for NVIDIA)
+hw_accel = true
+
+# Maximum CPU usage percentage (throttle if exceeded)
+max_cpu = 15
+
+# Maximum GPU usage percentage
+max_gpu = 25
+
+[transition]
+# Transition effect: "fade", "slide", "wipe", "blur", "none"
+# Only used by swww backend
+effect = "fade"
+
+# Transition duration in milliseconds
+duration = 800
+
+[directories]
+# Directories to scan for wallpapers
+wallpapers = [
+    "~/Wallpapers",
+    "~/Pictures/Wallpapers",
+    "/usr/share/backgrounds",
+]
+
+[scheduler]
+# Enable time-based scheduling
+enabled = true
+
+# Check schedule every N seconds
+check_interval = 300
+
+[logging]
+# Log level: "debug", "info", "warn", "error"
+level = "info"
+
+[api]
+# REST API settings
+host = "127.0.0.1"
+port = 9520

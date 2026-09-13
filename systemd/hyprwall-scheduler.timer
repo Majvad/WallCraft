@@ -1,0 +1,12 @@
+[Unit]
+Description=HyprWall — Wallpaper Scheduler Timer
+Documentation=https://github.com/your-username/hyprwall
+
+[Timer]
+# Run every 5 minutes
+OnBootSec=30
+OnUnitActiveSec=5min
+AccuracySec=30
+
+[Install]
+WantedBy=timers.target
