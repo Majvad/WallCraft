@@ -1,4 +1,4 @@
-# 🖼️ HyprWall
+# 🖼️ WallCraft
 
 <div align="center">
 
@@ -27,23 +27,35 @@
 - **Multi-Monitor** — Different wallpaper per display
 - **Per-Monitor Control** — Set/unset wallpapers independently
 
+### 🔍 Smart Features
+- **Real-time Search** — Filter wallpapers instantly by name or tags
+- **Image Preview** — Right-click to preview wallpapers at full scale
+- **Smart Wrapping** — Display 1000+ wallpapers without performance issues
+- **Lazy Loading** — Load thumbnails on demand for better performance
+- **Image Caching** — Cache thumbnails for instant loading
+- **Color Extraction** — Extract dominant colors from wallpapers
+
 ### 🔄 Automation
 - **Playlists** — Sequential, random, or shuffle rotation
 - **Time-Based Scheduling** — Change wallpapers based on time of day
 - **Systemd Integration** — Reliable timers and auto-start
 - **Smart Detection** — Auto-configure based on your hardware and distro
+- **Restore Last** — Restore your last used wallpaper on startup
 
 ### ⚡ Performance
 - **Hardware Acceleration** — NVIDIA CUDA/VA-API, AMD VA-API, Intel QuickSync
 - **Resource Limits** — Configurable CPU/GPU usage caps
 - **Smart Backend Selection** — Automatically chooses the best backend
-- **Efficient Caching** — Thumbnail and preview caching
+- **Profile System** — Pre-configured profiles for common setups
+- **Async Operations** — Non-blocking UI with parallel processing
+- **Thread Pool** — Load images in parallel for better performance
 
 ### 🌐 Interface
 - **Web UI** — Modern React-based control panel
 - **CLI** — Full-featured command-line interface
 - **IPC** — Unix socket for programmatic control
 - **REST API** — HTTP API on localhost:9520
+- **Keyboard Shortcuts** — Vim-style navigation (j/k/h/l)
 
 ### 🧠 Smart System
 - **Auto-Detection** — Detects distro, hardware, and capabilities
@@ -58,15 +70,15 @@
 ### One-Line Install (Arch Linux)
 
 ```bash
-git clone https://github.com/Majvad/hyprwall.git && cd hyprwall && chmod +x install.sh && ./install.sh
+git clone https://github.com/Majvad/wallcraft.git && cd wallcraft && chmod +x install.sh && ./install.sh
 ```
 
 ### Manual Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/Majvad/hyprwall.git
-cd hyprwall
+git clone https://github.com/Majvad/wallcraft.git
+cd wallcraft
 
 # Run the installer
 chmod +x install.sh
@@ -89,43 +101,46 @@ The installer will:
 
 ```bash
 # Start manually
-hyprwall start
+wallcraft start
 
 # Or enable auto-start
-systemctl --user enable --now hyprwall.service
+systemctl --user enable --now wallcraft.service
 ```
 
 ### Set a Wallpaper
 
 ```bash
 # Set wallpaper for laptop display
-hyprwall set eDP-1 ~/Wallpapers/image.jpg
+wallcraft set eDP-1 ~/Wallpapers/image.jpg
 
 # Set for external monitor
-hyprwall set HDMI-A-1 ~/Wallpapers/video.mp4
+wallcraft set HDMI-A-1 ~/Wallpapers/video.mp4
+
+# Restore last used wallpaper
+wallcraft restore
 ```
 
 ### Manage Playlists
 
 ```bash
 # Next wallpaper in rotation
-hyprwall next
+wallcraft next
 
 # Previous wallpaper
-hyprwall prev
+wallcraft prev
 
 # Pause rotation
-hyprwall pause
+wallcraft pause
 
 # Resume rotation
-hyprwall resume
+wallcraft resume
 ```
 
 ### Web UI
 
 ```bash
 # Open the web interface
-hyprwall ui
+wallcraft ui
 
 # Or visit manually
 # http://localhost:9520
@@ -134,28 +149,30 @@ hyprwall ui
 ### CLI Commands
 
 ```bash
-hyprwall status       # Show daemon status
-hyprwall monitors     # List connected monitors
-hyprwall list         # List available wallpapers
-hyprwall system       # Show system information
-hyprwall config       # Show current configuration
-hyprwall stop         # Stop the daemon
-hyprwall restart      # Restart the daemon
+wallcraft status       # Show daemon status
+wallcraft monitors     # List connected monitors
+wallcraft list         # List available wallpapers
+wallcraft search <q>   # Search wallpapers
+wallcraft system       # Show system information
+wallcraft config       # Show current configuration
+wallcraft stop         # Stop the daemon
+wallcraft restart      # Restart the daemon
 ```
 
 ---
 
 ## ⚙️ Configuration
 
-Configuration file: `~/.config/hyprwall/config.toml`
+Configuration file: `~/.config/wallcraft/config.toml`
 
 ### Basic Configuration
 
 ```toml
 [general]
 backend = "auto"              # auto, hyprpaper, swww, mpv
-cache_dir = "~/.cache/hyprwall"
+cache_dir = "~/.cache/wallcraft"
 auto_start = true
+restore_last = true           # Restore last wallpaper on startup
 
 [directories]
 wallpapers = [
@@ -171,27 +188,30 @@ duration = 800                # milliseconds
 hw_accel = true               # Enable hardware acceleration
 max_cpu = 15                  # Max CPU usage %
 max_gpu = 25                  # Max GPU usage %
+thumbnail_size = 256          # Thumbnail size in pixels
+cache_size = 500              # Max cached thumbnails
+lazy_loading = true           # Load thumbnails on demand
 ```
 
 ### Smart Profiles
 
-HyprWall includes pre-configured profiles for common setups:
+WallCraft includes pre-configured profiles for common setups:
 
 ```bash
 # Use NVIDIA profile (optimized for RTX/GTX cards)
-hyprwall profile nvidia
+wallcraft profile nvidia
 
 # Use AMD profile (optimized for Radeon cards)
-hyprwall profile amd
+wallcraft profile amd
 
 # Use Intel profile (optimized for integrated graphics)
-hyprwall profile intel
+wallcraft profile intel
 
 # Use low-power profile (laptop on battery)
-hyprwall profile laptop
+wallcraft profile laptop
 
 # Use performance profile (desktop, max quality)
-hyprwall profile performance
+wallcraft profile performance
 ```
 
 ### Advanced Configuration
@@ -229,7 +249,7 @@ level = "info"                # debug, info, warn, error
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    HyprWall Architecture                     │
+│                    WallCraft Architecture                    │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
@@ -261,7 +281,7 @@ level = "info"                # debug, info, warn, error
 
 ### Smart Detection System
 
-HyprWall automatically detects and configures:
+WallCraft automatically detects and configures:
 
 | Component | Detection | Action |
 |-----------|-----------|--------|
@@ -305,8 +325,8 @@ sudo apt install python3 nodejs npm git
 
 ```bash
 # Clone repository
-git clone https://github.com/Majvad/hyprwall.git
-cd hyprwall
+git clone https://github.com/Majvad/wallcraft.git
+cd wallcraft
 
 # Install dependencies
 npm install
@@ -321,11 +341,12 @@ make dev
 ### Project Structure
 
 ```
-hyprwall/
+wallcraft/
 ├── backend/
-│   └── hyprwall-daemon.py    # Python daemon
+│   ├── wallcraft-daemon.py    # Python daemon
+│   └── smart_detector.py      # System detection
 ├── bin/
-│   └── hyprwall              # CLI wrapper
+│   └── wallcraft              # CLI wrapper
 ├── src/
 │   ├── components/           # React components
 │   ├── pages/                # UI pages
@@ -334,8 +355,8 @@ hyprwall/
 ├── config/
 │   └── config.toml.example   # Config template
 ├── systemd/
-│   ├── hyprwall.service      # Systemd service
-│   └── hyprwall-scheduler.timer
+│   ├── wallcraft.service      # Systemd service
+│   └── wallcraft-scheduler.timer
 ├── install.sh                # Installer script
 ├── Makefile                  # Build automation
 └── README.md                 # This file
@@ -347,8 +368,8 @@ hyprwall/
 # Check dependencies
 make check
 
-# Run tests (future)
-make test
+# Run tests
+./test.sh
 
 # Lint code
 make lint
@@ -399,8 +420,8 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for det
 ```bash
 # Fork the repository on GitHub
 # Clone your fork
-git clone https://github.com/YOUR_USERNAME/hyprwall.git
-cd hyprwall
+git clone https://github.com/YOUR_USERNAME/wallcraft.git
+cd wallcraft
 
 # Create a feature branch
 git checkout -b feature/amazing-feature
@@ -431,15 +452,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [hyprpaper](https://github.com/hyprwm/hyprpaper) — For static wallpaper support
 - [swww](https://github.com/LGFae/swww) — For animated wallpaper support
 - [mpv](https://mpv.io) — For video playback
+- [waypaper](https://github.com/anufrievroman/waypaper) — Inspiration for features
 - The Arch Linux community
 
 ---
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/Majvad/hyprwall/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Majvad/hyprwall/discussions)
-- **Wiki**: [GitHub Wiki](https://github.com/Majvad/hyprwall/wiki)
+- **Issues**: [GitHub Issues](https://github.com/Majvad/wallcraft/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Majvad/wallcraft/discussions)
+- **Wiki**: [GitHub Wiki](https://github.com/Majvad/wallcraft/wiki)
 - **Telegram**: [@Majvad0](https://t.me/Majvad0)
 
 ---
