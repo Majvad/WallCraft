@@ -40,8 +40,10 @@ install-daemon:
 	@echo "Installing daemon..."
 	@sudo mkdir -p $(LIBDIR)
 	@sudo install -m 755 backend/hyprwall-daemon.py $(LIBDIR)/hyprwall-daemon.py
+	@sudo install -m 755 backend/smart_detector.py $(LIBDIR)/smart_detector.py
 	@sudo install -m 755 bin/hyprwall $(BINDIR)/hyprwall
 	@echo "  Daemon: $(LIBDIR)/hyprwall-daemon.py"
+	@echo "  Smart Detector: $(LIBDIR)/smart_detector.py"
 	@echo "  CLI:    $(BINDIR)/hyprwall"
 
 # Install config

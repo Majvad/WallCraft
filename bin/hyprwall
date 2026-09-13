@@ -151,29 +151,66 @@ cmd_status() {
 }
 
 cmd_monitors() {
-    local result
-    result=$(api_get "monitors")
-
     echo -e "${BOLD}Connected Monitors:${NC}"
     echo ""
+    
+    # Try hyprctl directly first (more reliable)
+    if command -v hyprctl &>/dev/null; then
+        local hypr_output
+        hypr_output=$(hyprctl monitors -j 2>/dev/null)
+        
+        if [ -n "$hypr_output" ] && [ "$hypr_output" != "[]" ]; then
+            echo "$hypr_output" | python3 -c "
+import sys, json
+try:
+    monitors = json.load(sys.stdin)
+    if not monitors:
+        print('  No monitors detected')
+        sys.exit(0)
+    for m in monitors:
+        name = m.get('name', 'unknown')
+        w = m.get('width', '?')
+        h = m.get('height', '?')
+        rr = m.get('refreshRate', '?')
+        focused = '★' if m.get('focused') else ' '
+        x = m.get('x', 0)
+        y = m.get('y', 0)
+        scale = m.get('scale', 1.0)
+        print(f'  {focused} {name}')
+        print(f'    Resolution: {w}x{h} @ {rr}Hz')
+        print(f'    Position: {x}x{y}, Scale: {scale}')
+        print()
+except Exception as e:
+    print(f'  Error parsing monitors: {e}')
+" 2>/dev/null
+            return
+        fi
+    fi
+    
+    # Fallback: try API
+    local result
+    result=$(api_get "monitors")
+    
     echo "$result" | python3 -c "
 import sys, json
-data = json.load(sys.stdin)
-monitors = data.get('monitors', [])
-if not monitors:
-    print('  No monitors detected (is Hyprland running?)')
-    sys.exit(0)
-for m in monitors:
-    name = m.get('name', 'unknown')
-    w = m.get('width', '?')
-    h = m.get('height', '?')
-    rr = m.get('refreshRate', '?')
-    focused = '★' if m.get('focused') else ' '
-    wp = m.get('currentWallpaper', 'none')
-    print(f'  {focused} {name}')
-    print(f'    Resolution: {w}x{h} @ {rr}Hz')
-    print(f'    Wallpaper:  {wp}')
-    print()
+try:
+    data = json.load(sys.stdin)
+    monitors = data.get('monitors', [])
+    if not monitors:
+        print('  No monitors detected')
+        print('  Try: hyprctl monitors')
+        sys.exit(0)
+    for m in monitors:
+        name = m.get('name', 'unknown')
+        w = m.get('width', '?')
+        h = m.get('height', '?')
+        rr = m.get('refreshRate', '?')
+        focused = '★' if m.get('focused') else ' '
+        print(f'  {focused} {name}')
+        print(f'    Resolution: {w}x{h} @ {rr}Hz')
+        print()
+except Exception as e:
+    print(f'  Error: {e}')
 " 2>/dev/null || log_error "Failed to parse monitor data"
 }
 
@@ -353,9 +390,14 @@ cmd_detect() {
     echo ""
 
     if command -v python3 &>/dev/null; then
-        local script_dir
-        script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-        local detector_script="${script_dir}/../backend/smart_detector.py"
+        local detector_script="/usr/local/lib/hyprwall/smart_detector.py"
+        
+        # Fallback: check relative path
+        if [ ! -f "$detector_script" ]; then
+            local script_dir
+            script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+            detector_script="${script_dir}/../backend/smart_detector.py"
+        fi
 
         if [ -f "$detector_script" ]; then
             python3 "$detector_script" 2>/dev/null | python3 -c "

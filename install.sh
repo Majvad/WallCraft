@@ -241,6 +241,12 @@ sudo mkdir -p "$LIB_DIR"
 sudo install -m 755 backend/hyprwall-daemon.py "$LIB_DIR/hyprwall-daemon.py"
 echo -e "  ${GREEN}✓${NC} Daemon: $LIB_DIR/hyprwall-daemon.py"
 
+# Smart Detector
+if [ -f "backend/smart_detector.py" ]; then
+    sudo install -m 755 backend/smart_detector.py "$LIB_DIR/smart_detector.py"
+    echo -e "  ${GREEN}✓${NC} Smart Detector: $LIB_DIR/smart_detector.py"
+fi
+
 # CLI
 sudo install -m 755 bin/hyprwall "$BIN_DIR/hyprwall"
 echo -e "  ${GREEN}✓${NC} CLI: $BIN_DIR/hyprwall"
