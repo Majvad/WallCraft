@@ -11,7 +11,11 @@ DAEMON_URL="http://${DAEMON_HOST}:${DAEMON_PORT}"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hyprwall"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/hyprwall"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hyprwall"
-DAEMON_SCRIPT="/usr/local/lib/hyprwall/hyprwall-daemon.py"
+
+# Paths (check multiple locations)
+LIB_DIR="/usr/local/lib/hyprwall"
+DAEMON_SCRIPT="${LIB_DIR}/hyprwall-daemon.py"
+DETECTOR_SCRIPT="${LIB_DIR}/smart_detector.py"
 PID_FILE="${STATE_DIR}/hyprwall.pid"
 
 # Colors
@@ -31,18 +35,19 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $*"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
 api_get() {
-    curl -s "${DAEMON_URL}/api/$1" 2>/dev/null || echo '{"error":"daemon not reachable"}'
+    curl -s --connect-timeout 2 "${DAEMON_URL}/api/$1" 2>/dev/null || echo '{"error":"daemon not reachable"}'
 }
 
 api_post() {
     local endpoint="$1"
     local data="$2"
-    curl -s -X POST "${DAEMON_URL}/api/${endpoint}" \
+    curl -s --connect-timeout 2 -X POST "${DAEMON_URL}/api/${endpoint}" \
         -H "Content-Type: application/json" \
         -d "$data" 2>/dev/null || echo '{"error":"daemon not reachable"}'
 }
 
 is_daemon_running() {
+    # Check PID file
     if [ -f "$PID_FILE" ]; then
         local pid
         pid=$(cat "$PID_FILE")
@@ -50,7 +55,7 @@ is_daemon_running() {
             return 0
         fi
     fi
-    # Also check if port is in use
+    # Check if port is responding
     if curl -s --connect-timeout 1 "${DAEMON_URL}/api/status" >/dev/null 2>&1; then
         return 0
     fi
@@ -74,20 +79,19 @@ cmd_start() {
     ensure_dirs
 
     local config_file="${CONFIG_DIR}/config.toml"
-    local daemon_cmd="python3"
-
+    
     if [ -f "$DAEMON_SCRIPT" ]; then
-        nohup $daemon_cmd "$DAEMON_SCRIPT" \
+        nohup python3 "$DAEMON_SCRIPT" \
             --config "$config_file" \
             --port "$DAEMON_PORT" \
-            --ui-dir "/usr/local/lib/hyprwall/ui" \
+            --ui-dir "${LIB_DIR}/ui" \
             > "${STATE_DIR}/hyprwall.log" 2>&1 &
         echo $! > "$PID_FILE"
         log_info "Daemon started (PID: $(cat "$PID_FILE"))"
         log_info "Web UI: http://localhost:${DAEMON_PORT}"
     else
         log_error "Daemon script not found at $DAEMON_SCRIPT"
-        log_info "Run 'hyprwall install' first"
+        log_info "Run 'sudo make install' first"
         return 1
     fi
 }
@@ -154,10 +158,10 @@ cmd_monitors() {
     echo -e "${BOLD}Connected Monitors:${NC}"
     echo ""
     
-    # Try hyprctl directly first (more reliable)
+    # Method 1: Try hyprctl directly (most reliable)
     if command -v hyprctl &>/dev/null; then
         local hypr_output
-        hypr_output=$(hyprctl monitors -j 2>/dev/null)
+        hypr_output=$(hyprctl monitors -j 2>/dev/null || echo "")
         
         if [ -n "$hypr_output" ] && [ "$hypr_output" != "[]" ]; then
             echo "$hypr_output" | python3 -c "
@@ -187,7 +191,7 @@ except Exception as e:
         fi
     fi
     
-    # Fallback: try API
+    # Method 2: Try API
     local result
     result=$(api_get "monitors")
     
@@ -198,7 +202,7 @@ try:
     monitors = data.get('monitors', [])
     if not monitors:
         print('  No monitors detected')
-        print('  Try: hyprctl monitors')
+        print('  Try running: hyprctl monitors')
         sys.exit(0)
     for m in monitors:
         name = m.get('name', 'unknown')
@@ -292,6 +296,92 @@ for wp in wallpapers:
 " 2>/dev/null || log_error "Failed to parse wallpaper data"
 }
 
+cmd_detect() {
+    echo -e "${BOLD}Smart System Detection${NC}"
+    echo ""
+
+    if ! command -v python3 &>/dev/null; then
+        log_error "Python3 is required for smart detection"
+        return 1
+    fi
+
+    # Try to find smart_detector.py in multiple locations
+    local detector_script=""
+    
+    # Location 1: Installed location
+    if [ -f "$DETECTOR_SCRIPT" ]; then
+        detector_script="$DETECTOR_SCRIPT"
+    # Location 2: Development location
+    elif [ -f "./backend/smart_detector.py" ]; then
+        detector_script="./backend/smart_detector.py"
+    # Location 3: Relative to this script
+    elif [ -f "$(dirname "$0")/../backend/smart_detector.py" ]; then
+        detector_script="$(dirname "$0")/../backend/smart_detector.py"
+    fi
+
+    if [ -z "$detector_script" ]; then
+        log_error "Smart detector not found"
+        log_info "Expected locations:"
+        log_info "  - $DETECTOR_SCRIPT"
+        log_info "  - ./backend/smart_detector.py"
+        return 1
+    fi
+
+    python3 "$detector_script" 2>/dev/null | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    
+    print('Distribution:')
+    dist = data.get('distribution', {})
+    print(f'  Name: {dist.get(\"pretty_name\", \"Unknown\")}')
+    print(f'  Package Manager: {dist.get(\"package_manager\", \"unknown\")}')
+    print()
+    
+    print('GPU:')
+    gpu = data.get('gpu', {})
+    print(f'  Vendor: {gpu.get(\"vendor\", \"unknown\")}')
+    print(f'  Model: {gpu.get(\"model\", \"Unknown\")}')
+    print(f'  VRAM: {gpu.get(\"vram\", \"N/A\")}')
+    print(f'  Driver: {gpu.get(\"driver\", \"N/A\")}')
+    print(f'  Acceleration: {gpu.get(\"acceleration_method\", \"none\")}')
+    print(f'  CUDA: {\"✓\" if gpu.get(\"has_cuda\") else \"✗\"}')
+    print(f'  VA-API: {\"✓\" if gpu.get(\"has_vaapi\") else \"✗\"}')
+    print()
+    
+    print('Environment:')
+    env = data.get('environment', {})
+    print(f'  Compositor: {env.get(\"compositor\", \"Unknown\")}')
+    print(f'  Wayland: {\"✓\" if env.get(\"is_wayland\") else \"✗\"}')
+    print(f'  Hyprland: {\"✓\" if env.get(\"is_hyprland\") else \"✗\"}')
+    print()
+    
+    print('Displays:')
+    displays = data.get('displays', [])
+    if displays:
+        for d in displays:
+            print(f'  {d.get(\"name\", \"?\")} - {d.get(\"width\", \"?\")}x{d.get(\"height\", \"?\")} @ {d.get(\"refresh_rate\", \"?\")}Hz')
+    else:
+        print('  No displays detected')
+    print()
+    
+    print('Tools:')
+    tools = data.get('tools', {})
+    for tool, installed in tools.items():
+        status = '✓' if installed else '✗'
+        print(f'  {status} {tool}')
+    print()
+    
+    print('Recommendations:')
+    print(f'  Backend: {data.get(\"recommended_backend\", \"auto\")}')
+    print(f'  Profile: {data.get(\"recommended_profile\", \"default\")}')
+    
+except Exception as e:
+    print(f'Error parsing detection data: {e}')
+    sys.exit(1)
+"
+}
+
 cmd_system() {
     local result
     result=$(api_get "system")
@@ -346,21 +436,20 @@ cmd_install() {
     ensure_dirs
 
     # Install daemon
-    local install_dir="/usr/local/lib/hyprwall"
-    sudo mkdir -p "$install_dir"
-    sudo cp "$(dirname "$0")/backend/hyprwall-daemon.py" "$install_dir/"
-    sudo chmod +x "$install_dir/hyprwall-daemon.py"
+    sudo mkdir -p "$LIB_DIR"
+    sudo install -m 755 backend/hyprwall-daemon.py "$LIB_DIR/"
+    sudo install -m 755 backend/smart_detector.py "$LIB_DIR/"
 
     # Install config if not exists
     if [ ! -f "${CONFIG_DIR}/config.toml" ]; then
-        cp "$(dirname "$0")/config/config.toml.example" "${CONFIG_DIR}/config.toml"
+        cp config/config.toml.example "${CONFIG_DIR}/config.toml"
         log_info "Config created at ${CONFIG_DIR}/config.toml"
     fi
 
     # Install systemd service
     local systemd_dir="${HOME}/.config/systemd/user"
     mkdir -p "$systemd_dir"
-    cp "$(dirname "$0")/systemd/hyprwall.service" "$systemd_dir/"
+    cp systemd/hyprwall.service "$systemd_dir/"
     systemctl --user daemon-reload
 
     log_info "Installation complete!"
@@ -375,7 +464,7 @@ cmd_uninstall() {
     systemctl --user disable hyprwall.service 2>/dev/null || true
 
     sudo rm -f /usr/local/bin/hyprwall
-    sudo rm -rf /usr/local/lib/hyprwall
+    sudo rm -rf "$LIB_DIR"
     rm -f "${HOME}/.config/systemd/user/hyprwall.service"
     systemctl --user daemon-reload
 
@@ -383,156 +472,6 @@ cmd_uninstall() {
     log_info "Config and cache preserved at:"
     log_info "  ${CONFIG_DIR}"
     log_info "  ${CACHE_DIR}"
-}
-
-cmd_detect() {
-    echo -e "${BOLD}Smart System Detection${NC}"
-    echo ""
-
-    if command -v python3 &>/dev/null; then
-        local detector_script="/usr/local/lib/hyprwall/smart_detector.py"
-        
-        # Fallback: check relative path
-        if [ ! -f "$detector_script" ]; then
-            local script_dir
-            script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-            detector_script="${script_dir}/../backend/smart_detector.py"
-        fi
-
-        if [ -f "$detector_script" ]; then
-            python3 "$detector_script" 2>/dev/null | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-
-print('Distribution:')
-dist = data.get('distribution', {})
-print(f'  Name: {dist.get(\"pretty_name\", \"Unknown\")}')
-print(f'  Package Manager: {dist.get(\"package_manager\", \"unknown\")}')
-print()
-
-print('GPU:')
-gpu = data.get('gpu', {})
-print(f'  Vendor: {gpu.get(\"vendor\", \"unknown\")}')
-print(f'  Model: {gpu.get(\"model\", \"Unknown\")}')
-print(f'  VRAM: {gpu.get(\"vram\", \"N/A\")}')
-print(f'  Driver: {gpu.get(\"driver\", \"N/A\")}')
-print(f'  Acceleration: {gpu.get(\"acceleration_method\", \"none\")}')
-print(f'  CUDA: {\"✓\" if gpu.get(\"has_cuda\") else \"✗\"}')
-print(f'  VA-API: {\"✓\" if gpu.get(\"has_vaapi\") else \"✗\"}')
-print()
-
-print('Environment:')
-env = data.get('environment', {})
-print(f'  Compositor: {env.get(\"compositor\", \"Unknown\")}')
-print(f'  Wayland: {\"✓\" if env.get(\"is_wayland\") else \"✗\"}')
-print(f'  Hyprland: {\"✓\" if env.get(\"is_hyprland\") else \"✗\"}')
-print()
-
-print('Displays:')
-displays = data.get('displays', [])
-if displays:
-    for d in displays:
-        print(f'  {d.get(\"name\", \"?\")} - {d.get(\"width\", \"?\")}x{d.get(\"height\", \"?\")} @ {d.get(\"refresh_rate\", \"?\")}Hz')
-else:
-    print('  No displays detected')
-print()
-
-print('Tools:')
-tools = data.get('tools', {})
-for tool, installed in tools.items():
-    status = '✓' if installed else '✗'
-    print(f'  {status} {tool}')
-print()
-
-print('Recommendations:')
-print(f'  Backend: {data.get(\"recommended_backend\", \"auto\")}')
-print(f'  Profile: {data.get(\"recommended_profile\", \"default\")}')
-"
-        else
-            log_error "Smart detector not found at $detector_script"
-        fi
-    else
-        log_error "Python3 is required for smart detection"
-    fi
-}
-
-cmd_profile() {
-    local profile_name="${1:-}"
-
-    if [ -z "$profile_name" ]; then
-        echo -e "${BOLD}Available Profiles:${NC}"
-        echo ""
-        echo "  nvidia        - Optimized for NVIDIA GPUs (CUDA acceleration)"
-        echo "  amd           - Optimized for AMD GPUs (VA-API)"
-        echo "  intel         - Optimized for Intel GPUs (QuickSync)"
-        echo "  laptop        - Power-efficient settings for laptops"
-        echo "  nvidia-laptop - NVIDIA GPU with laptop power savings"
-        echo "  performance   - Maximum quality, higher resource usage"
-        echo "  default       - Balanced settings"
-        echo ""
-        echo -e "Usage: ${CYAN}hyprwall profile <name>${NC}"
-        return
-    fi
-
-    local config_file="${CONFIG_DIR}/config.toml"
-
-    if [ ! -f "$config_file" ]; then
-        log_error "Config file not found: $config_file"
-        return 1
-    fi
-
-    case "$profile_name" in
-        nvidia)
-            sed -i 's/backend = .*/backend = "mpv"/' "$config_file"
-            sed -i 's/hw_accel = .*/hw_accel = true/' "$config_file"
-            sed -i 's/max_cpu = .*/max_cpu = 15/' "$config_file"
-            sed -i 's/max_gpu = .*/max_gpu = 25/' "$config_file"
-            log_info "Applied NVIDIA profile (mpv backend, CUDA acceleration)"
-            ;;
-        amd)
-            sed -i 's/backend = .*/backend = "mpv"/' "$config_file"
-            sed -i 's/hw_accel = .*/hw_accel = true/' "$config_file"
-            sed -i 's/max_cpu = .*/max_cpu = 15/' "$config_file"
-            sed -i 's/max_gpu = .*/max_gpu = 25/' "$config_file"
-            log_info "Applied AMD profile (mpv backend, VA-API acceleration)"
-            ;;
-        intel)
-            sed -i 's/backend = .*/backend = "hyprpaper"/' "$config_file"
-            sed -i 's/hw_accel = .*/hw_accel = true/' "$config_file"
-            sed -i 's/max_cpu = .*/max_cpu = 10/' "$config_file"
-            sed -i 's/max_gpu = .*/max_gpu = 20/' "$config_file"
-            log_info "Applied Intel profile (hyprpaper backend, QuickSync)"
-            ;;
-        laptop)
-            sed -i 's/max_cpu = .*/max_cpu = 10/' "$config_file"
-            sed -i 's/max_gpu = .*/max_gpu = 15/' "$config_file"
-            log_info "Applied laptop profile (power-efficient settings)"
-            ;;
-        nvidia-laptop)
-            sed -i 's/backend = .*/backend = "mpv"/' "$config_file"
-            sed -i 's/hw_accel = .*/hw_accel = true/' "$config_file"
-            sed -i 's/max_cpu = .*/max_cpu = 10/' "$config_file"
-            sed -i 's/max_gpu = .*/max_gpu = 15/' "$config_file"
-            log_info "Applied NVIDIA laptop profile (CUDA + power savings)"
-            ;;
-        performance)
-            sed -i 's/max_cpu = .*/max_cpu = 30/' "$config_file"
-            sed -i 's/max_gpu = .*/max_gpu = 50/' "$config_file"
-            log_info "Applied performance profile (maximum quality)"
-            ;;
-        default)
-            sed -i 's/max_cpu = .*/max_cpu = 15/' "$config_file"
-            sed -i 's/max_gpu = .*/max_gpu = 25/' "$config_file"
-            log_info "Applied default profile (balanced settings)"
-            ;;
-        *)
-            log_error "Unknown profile: $profile_name"
-            cmd_profile
-            return 1
-            ;;
-    esac
-
-    log_info "Restart daemon to apply changes: hyprwall restart"
 }
 
 cmd_help() {
@@ -549,9 +488,8 @@ cmd_help() {
     echo "  set <mon> <path>   Set wallpaper for monitor"
     echo "  next [monitor]     Switch to next wallpaper"
     echo "  list               List available wallpapers"
-    echo "  system             Show system information"
     echo "  detect             Run smart system detection"
-    echo "  profile [name]     Apply or list profiles"
+    echo "  system             Show system information"
     echo "  ui                 Open web interface"
     echo "  install            Install daemon and service"
     echo "  uninstall          Remove HyprWall"
@@ -564,7 +502,7 @@ cmd_help() {
     echo -e "${BOLD}Examples:${NC}"
     echo "  hyprwall start"
     echo "  hyprwall detect"
-    echo "  hyprwall profile nvidia"
+    echo "  hyprwall monitors"
     echo "  hyprwall set eDP-1 ~/Wallpapers/image.jpg"
     echo "  hyprwall next"
     echo "  hyprwall ui"
@@ -584,9 +522,8 @@ case "${1:-help}" in
     set)        shift; cmd_set "$@" ;;
     next)       shift; cmd_next "$@" ;;
     list|ls)    cmd_list ;;
-    system|sys) cmd_system ;;
     detect)     cmd_detect ;;
-    profile)    shift; cmd_profile "$@" ;;
+    system|sys) cmd_system ;;
     ui|web)     cmd_ui ;;
     install)    cmd_install ;;
     uninstall)  cmd_uninstall ;;
