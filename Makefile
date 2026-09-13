@@ -1,13 +1,13 @@
-# HyprWall Makefile
+# WallCraft Makefile
 # ==================
 
 PREFIX ?= /usr/local
 BINDIR ?= $(PREFIX)/bin
-LIBDIR ?= $(PREFIX)/lib/hyprwall
+LIBDIR ?= $(PREFIX)/lib/wallcraft
 SYSDIR ?= $(HOME)/.config/systemd/user
-CFGDIR ?= $(HOME)/.config/hyprwall
-CACHEDIR ?= $(HOME)/.cache/hyprwall
-STATEDIR ?= $(HOME)/.local/state/hyprwall
+CFGDIR ?= $(HOME)/.config/wallcraft
+CACHEDIR ?= $(HOME)/.cache/wallcraft
+STATEDIR ?= $(HOME)/.local/state/wallcraft
 
 .PHONY: all install install-ui install-daemon install-config install-systemd uninstall build clean help
 
@@ -15,7 +15,7 @@ all: build
 
 # Build the web UI
 build:
-	@echo "Building HyprWall UI..."
+	@echo "Building WallCraft UI..."
 	@npm install
 	@npm run build
 	@echo "Build complete: dist/"
@@ -24,14 +24,14 @@ build:
 install: install-daemon install-config install-systemd install-ui
 	@echo ""
 	@echo "╔══════════════════════════════════════════╗"
-	@echo "║  HyprWall installed successfully!        ║"
+	@echo "║  WallCraft installed successfully!       ║"
 	@echo "╠══════════════════════════════════════════╣"
 	@echo "║                                          ║"
 	@echo "║  Next steps:                             ║"
-	@echo "║  1. systemctl --user start hyprwall      ║"
-	@echo "║  2. hyprwall ui                          ║"
+	@echo "║  1. systemctl --user start wallcraft     ║"
+	@echo "║  2. wallcraft ui                         ║"
 	@echo "║  3. Add to hyprland.conf:                ║"
-	@echo "║     exec-once = hyprwall start           ║"
+	@echo "║     exec-once = wallcraft start          ║"
 	@echo "║                                          ║"
 	@echo "╚══════════════════════════════════════════╝"
 
@@ -39,12 +39,12 @@ install: install-daemon install-config install-systemd install-ui
 install-daemon:
 	@echo "Installing daemon..."
 	@sudo mkdir -p $(LIBDIR)
-	@sudo install -m 755 backend/hyprwall-daemon.py $(LIBDIR)/hyprwall-daemon.py
+	@sudo install -m 755 backend/wallcraft-daemon.py $(LIBDIR)/wallcraft-daemon.py
 	@sudo install -m 755 backend/smart_detector.py $(LIBDIR)/smart_detector.py
-	@sudo install -m 755 bin/hyprwall $(BINDIR)/hyprwall
-	@echo "  Daemon: $(LIBDIR)/hyprwall-daemon.py"
+	@sudo install -m 755 bin/wallcraft $(BINDIR)/wallcraft
+	@echo "  Daemon: $(LIBDIR)/wallcraft-daemon.py"
 	@echo "  Smart Detector: $(LIBDIR)/smart_detector.py"
-	@echo "  CLI:    $(BINDIR)/hyprwall"
+	@echo "  CLI:    $(BINDIR)/wallcraft"
 
 # Install config
 install-config:
@@ -61,11 +61,11 @@ install-config:
 install-systemd:
 	@echo "Installing systemd service..."
 	@mkdir -p $(SYSDIR)
-	@cp systemd/hyprwall.service $(SYSDIR)/hyprwall.service
-	@cp systemd/hyprwall-scheduler.timer $(SYSDIR)/hyprwall-scheduler.timer
+	@cp systemd/wallcraft.service $(SYSDIR)/wallcraft.service
+	@cp systemd/wallcraft-scheduler.timer $(SYSDIR)/wallcraft-scheduler.timer
 	@systemctl --user daemon-reload
-	@echo "  Service: $(SYSDIR)/hyprwall.service"
-	@echo "  Timer:   $(SYSDIR)/hyprwall-scheduler.timer"
+	@echo "  Service: $(SYSDIR)/wallcraft.service"
+	@echo "  Timer:   $(SYSDIR)/wallcraft-scheduler.timer"
 
 # Install web UI (serve via daemon)
 install-ui:
@@ -76,18 +76,18 @@ install-ui:
 
 # Uninstall
 uninstall:
-	@echo "Uninstalling HyprWall..."
-	@systemctl --user stop hyprwall.service 2>/dev/null || true
-	@systemctl --user disable hyprwall.service 2>/dev/null || true
-	@systemctl --user stop hyprwall-scheduler.timer 2>/dev/null || true
-	@systemctl --user disable hyprwall-scheduler.timer 2>/dev/null || true
-	@sudo rm -f $(BINDIR)/hyprwall
+	@echo "Uninstalling WallCraft..."
+	@systemctl --user stop wallcraft.service 2>/dev/null || true
+	@systemctl --user disable wallcraft.service 2>/dev/null || true
+	@systemctl --user stop wallcraft-scheduler.timer 2>/dev/null || true
+	@systemctl --user disable wallcraft-scheduler.timer 2>/dev/null || true
+	@sudo rm -f $(BINDIR)/wallcraft
 	@sudo rm -rf $(LIBDIR)
-	@rm -f $(SYSDIR)/hyprwall.service
-	@rm -f $(SYSDIR)/hyprwall-scheduler.timer
+	@rm -f $(SYSDIR)/wallcraft.service
+	@rm -f $(SYSDIR)/wallcraft-scheduler.timer
 	@systemctl --user daemon-reload
 	@echo ""
-	@echo "HyprWall uninstalled."
+	@echo "WallCraft uninstalled."
 	@echo "Config preserved at: $(CFGDIR)"
 	@echo "Cache preserved at:  $(CACHEDIR)"
 	@echo "To remove completely:"
@@ -100,7 +100,7 @@ clean:
 
 # Development: run daemon locally
 dev:
-	@python3 backend/hyprwall-daemon.py --config config/config.toml.example
+	@python3 backend/wallcraft-daemon.py --config config/config.toml.example
 
 # Check dependencies
 check:
@@ -120,7 +120,7 @@ check:
 
 # Help
 help:
-	@echo "HyprWall — Wallpaper Manager for Hyprland"
+	@echo "WallCraft — Wallpaper Manager for Hyprland"
 	@echo ""
 	@echo "Usage: make <target>"
 	@echo ""
@@ -131,7 +131,7 @@ help:
 	@echo "  install-ui     Install web UI only"
 	@echo "  install-config Install config files only"
 	@echo "  install-systemd Install systemd service only"
-	@echo "  uninstall      Remove HyprWall"
+	@echo "  uninstall      Remove WallCraft"
 	@echo "  check          Check dependencies"
 	@echo "  dev            Run daemon in development mode"
 	@echo "  clean          Clean build artifacts"

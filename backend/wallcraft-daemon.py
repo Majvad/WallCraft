@@ -552,7 +552,7 @@ class APIHandler(BaseHTTPRequestHandler):
     """HTTP request handler for the REST API + static files."""
 
     manager: WallpaperManager = None
-    ui_dir: str = "/usr/local/lib/hyprwall/ui"
+    ui_dir: str = "/usr/local/lib/wallcraft/ui"
 
     # MIME types for static files
     MIME_TYPES = {
@@ -710,12 +710,12 @@ class APIHandler(BaseHTTPRequestHandler):
 # ============================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="HyprWall Daemon")
+    parser = argparse.ArgumentParser(description="WallCraft Daemon")
     parser.add_argument("--port", type=int, default=9520, help="API port (default: 9520)")
     parser.add_argument("--config", type=str, default=None, help="Config file path")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Bind address")
-    parser.add_argument("--ui-dir", type=str, default="/usr/local/lib/hyprwall/ui",
-                        help="Path to web UI files (default: /usr/local/lib/hyprwall/ui)")
+    parser.add_argument("--ui-dir", type=str, default="/usr/local/lib/wallcraft/ui",
+                        help="Path to web UI files (default: /usr/local/lib/wallcraft/ui)")
     args = parser.parse_args()
 
     # Load config
@@ -763,7 +763,7 @@ def main():
 
     # Start HTTP server
     server = HTTPServer((args.host, args.port), APIHandler)
-    logger.info(f"HyprWall daemon started on http://{args.host}:{args.port}")
+    logger.info(f"WallCraft daemon started on http://{args.host}:{args.port}")
     logger.info(f"Active backend: {manager.active_backend.name if manager.active_backend else 'None'}")
     logger.info(f"Found {len(manager.wallpapers)} wallpapers")
     logger.info(f"Web UI: http://{args.host}:{args.port}")

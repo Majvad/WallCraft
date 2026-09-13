@@ -223,8 +223,8 @@ cmd_set() {
     local path="${2:-}"
 
     if [ -z "$monitor" ] || [ -z "$path" ]; then
-        log_error "Usage: hyprwall set <monitor> <path>"
-        log_info "Example: hyprwall set eDP-1 ~/Wallpapers/image.jpg"
+        log_error "Usage: wallcraft set <monitor> <path>"
+        log_info "Example: wallcraft set eDP-1 ~/Wallpapers/image.jpg"
         return 1
     fi
 
@@ -377,7 +377,7 @@ try:
     print(f'  Profile: {data.get(\"recommended_profile\", \"default\")}')
     
 except Exception as e:
-    print(f'Error parsing detection data: {e}')
+    print(f'Error parsing detection results: {e}')
     sys.exit(1)
 "
 }
@@ -419,7 +419,7 @@ cmd_ui() {
         sleep 2
     fi
 
-    log_info "Opening HyprWall UI at ${DAEMON_URL}"
+    log_info "Opening WallCraft UI at ${DAEMON_URL}"
 
     # Try to open in browser
     if command -v xdg-open &>/dev/null; then
@@ -432,12 +432,12 @@ cmd_ui() {
 }
 
 cmd_install() {
-    log_info "Installing HyprWall..."
+    log_info "Installing WallCraft..."
     ensure_dirs
 
     # Install daemon
     sudo mkdir -p "$LIB_DIR"
-    sudo install -m 755 backend/hyprwall-daemon.py "$LIB_DIR/"
+    sudo install -m 755 backend/wallcraft-daemon.py "$LIB_DIR/"
     sudo install -m 755 backend/smart_detector.py "$LIB_DIR/"
 
     # Install config if not exists
@@ -449,26 +449,26 @@ cmd_install() {
     # Install systemd service
     local systemd_dir="${HOME}/.config/systemd/user"
     mkdir -p "$systemd_dir"
-    cp systemd/hyprwall.service "$systemd_dir/"
+    cp systemd/wallcraft.service "$systemd_dir/"
     systemctl --user daemon-reload
 
     log_info "Installation complete!"
-    log_info "Run 'hyprwall start' or 'systemctl --user start hyprwall'"
+    log_info "Run 'wallcraft start' or 'systemctl --user start wallcraft'"
 }
 
 cmd_uninstall() {
-    log_warn "Uninstalling HyprWall..."
+    log_warn "Uninstalling WallCraft..."
 
     cmd_stop 2>/dev/null || true
-    systemctl --user stop hyprwall.service 2>/dev/null || true
-    systemctl --user disable hyprwall.service 2>/dev/null || true
+    systemctl --user stop wallcraft.service 2>/dev/null || true
+    systemctl --user disable wallcraft.service 2>/dev/null || true
 
-    sudo rm -f /usr/local/bin/hyprwall
+    sudo rm -f /usr/local/bin/wallcraft
     sudo rm -rf "$LIB_DIR"
-    rm -f "${HOME}/.config/systemd/user/hyprwall.service"
+    rm -f "${HOME}/.config/systemd/user/wallcraft.service"
     systemctl --user daemon-reload
 
-    log_info "HyprWall uninstalled"
+    log_info "WallCraft uninstalled"
     log_info "Config and cache preserved at:"
     log_info "  ${CONFIG_DIR}"
     log_info "  ${CACHE_DIR}"
@@ -492,7 +492,7 @@ cmd_help() {
     echo "  system             Show system information"
     echo "  ui                 Open web interface"
     echo "  install            Install daemon and service"
-    echo "  uninstall          Remove HyprWall"
+    echo "  uninstall          Remove WallCraft"
     echo "  help               Show this help"
     echo ""
     echo -e "${BOLD}Environment Variables:${NC}"
@@ -528,7 +528,7 @@ case "${1:-help}" in
     install)    cmd_install ;;
     uninstall)  cmd_uninstall ;;
     help|--help|-h) cmd_help ;;
-    version|--version|-v) echo "HyprWall v${VERSION}" ;;
+    version|--version|-v) echo "WallCraft v${VERSION}" ;;
     *)
         log_error "Unknown command: $1"
         cmd_help

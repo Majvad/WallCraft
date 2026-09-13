@@ -1,6 +1,6 @@
 [Unit]
-Description=HyprWall — Wallpaper Scheduler Timer
-Documentation=https://github.com/your-username/hyprwall
+Description=WallCraft — Wallpaper Scheduler Timer
+Documentation=https://github.com/Majvad/wallcraft
 
 [Timer]
 # Run every 5 minutes
