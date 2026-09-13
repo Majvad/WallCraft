@@ -1,1 +1,123 @@
 @import "tailwindcss";
+
+@theme {
+  --color-hypr-bg: #0a0a0f;
+  --color-hypr-surface: #12121a;
+  --color-hypr-surface-2: #1a1a25;
+  --color-hypr-surface-3: #222230;
+  --color-hypr-border: #2a2a3a;
+  --color-hypr-accent: #7c5cfc;
+  --color-hypr-accent-light: #9b7fff;
+  --color-hypr-accent-dim: #5a3fd4;
+  --color-hypr-green: #4ade80;
+  --color-hypr-red: #f87171;
+  --color-hypr-yellow: #fbbf24;
+  --color-hypr-blue: #60a5fa;
+  --color-hypr-cyan: #22d3ee;
+  --color-hypr-text: #e2e8f0;
+  --color-hypr-text-dim: #94a3b8;
+  --color-hypr-text-muted: #64748b;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: #0a0a0f;
+  color: #e2e8f0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #12121a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a3a;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a4a;
+}
+
+/* Glass morphism effect */
+.glass {
+  background: rgba(18, 18, 26, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(42, 42, 58, 0.5);
+}
+
+/* Glow effects */
+.glow-accent {
+  box-shadow: 0 0 20px rgba(124, 92, 252, 0.15), 0 0 40px rgba(124, 92, 252, 0.05);
+}
+
+.glow-green {
+  box-shadow: 0 0 12px rgba(74, 222, 128, 0.2);
+}
+
+/* Pulse animation for active indicators */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #7c5cfc, #22d3ee);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Wallpaper card hover */
+.wallpaper-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wallpaper-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(124, 92, 252, 0.1);
+}
+
+/* Terminal-like code block */
+.code-block {
+  background: #0d0d14;
+  border: 1px solid #1a1a25;
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+/* Status indicator */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-dot.active {
+  background: #4ade80;
+  box-shadow: 0 0 8px rgba(74, 222, 128, 0.5);
+}
+
+.status-dot.inactive {
+  background: #64748b;
+}
+
+.status-dot.warning {
+  background: #fbbf24;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+}
