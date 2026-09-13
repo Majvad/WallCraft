@@ -13,7 +13,7 @@ We release patches for security vulnerabilities. Which versions are eligible for
 
 **Please do NOT report security vulnerabilities through public GitHub issues.**
 
-Instead, please report them via email to [your-email@example.com](mailto:your-email@example.com).
+Instead, please report them via Telegram to [@Majvad0](https://t.me/Majvad0).
 
 You should receive a response within 48 hours. If for some reason you do not, please follow up via email to ensure we received your original message.
 

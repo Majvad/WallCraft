@@ -58,14 +58,14 @@
 ### One-Line Install (Arch Linux)
 
 ```bash
-git clone https://github.com/yourusername/hyprwall.git && cd hyprwall && chmod +x install.sh && ./install.sh
+git clone https://github.com/Majvad/hyprwall.git && cd hyprwall && chmod +x install.sh && ./install.sh
 ```
 
 ### Manual Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/hyprwall.git
+git clone https://github.com/Majvad/hyprwall.git
 cd hyprwall
 
 # Run the installer
@@ -305,7 +305,7 @@ sudo apt install python3 nodejs npm git
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/hyprwall.git
+git clone https://github.com/Majvad/hyprwall.git
 cd hyprwall
 
 # Install dependencies
@@ -437,16 +437,27 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/hyprwall/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/hyprwall/discussions)
-- **Wiki**: [GitHub Wiki](https://github.com/yourusername/hyprwall/wiki)
+- **Issues**: [GitHub Issues](https://github.com/Majvad/hyprwall/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Majvad/hyprwall/discussions)
+- **Wiki**: [GitHub Wiki](https://github.com/Majvad/hyprwall/wiki)
+- **Telegram**: [@Majvad0](https://t.me/Majvad0)
 
 ---
 
 <div align="center">
 
-**Made with ❤️ for the Hyprland community**
+**Made with ❤️ by [Majvad](https://github.com/Majvad)**
+
+[![Telegram](https://img.shields.io/badge/Telegram-@Majvad0-2CA5E0?style=flat&logo=telegram&logoColor=white)](https://t.me/Majvad0)
 
 ⭐ Star this repo if you find it useful!
 
 </div>
+
+---
+
+## 👤 Author
+
+**Majvad**
+- Telegram: [@Majvad0](https://t.me/Majvad0)
+- GitHub: [@Majvad](https://github.com/Majvad)

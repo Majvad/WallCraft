@@ -25,19 +25,19 @@ git commit -m "Initial commit: HyprWall v0.1.0"
 قبل از push، این فایل‌ها را ویرایش کنید:
 
 #### README.md
-- [ ] تغییر `yourusername` به username واقعی GitHub شما
-- [ ] بروزرسانی لینک‌ها
+- [x] لینک‌ها با username `Majvad` تنظیم شده‌اند
+- [ ] بررسی نهایی لینک‌ها
 - [ ] اضافه کردن screenshots (اختیاری ولی توصیه شده)
 
 #### CONTRIBUTING.md
-- [ ] تغییر `yourusername` به username واقعی
-- [ ] بروزرسانی ایمیل تماس
+- [x] لینک‌ها با username `Majvad` تنظیم شده‌اند
+- [x] اطلاعات تماس تلگرام `@Majvad0` اضافه شده
 
 #### SECURITY.md
-- [ ] تغییر `your-email@example.com` به ایمیل واقعی شما
+- [x] اطلاعات تماس تلگرام `@Majvad0` اضافه شده
 
 #### CODE_OF_CONDUCT.md
-- [ ] تغییر `your-email@example.com` به ایمیل واقعی شما
+- [x] اطلاعات تماس تلگرام `@Majvad0` اضافه شده
 
 ### 3. اضافه کردن Screenshots (توصیه شده)
 

@@ -51,5 +51,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🔌 CLI and IPC control
 - 🧠 Smart system detection
 
-[Unreleased]: https://github.com/yourusername/hyprwall/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/yourusername/hyprwall/releases/tag/v0.1.0
+[Unreleased]: https://github.com/Majvad/hyprwall/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Majvad/hyprwall/releases/tag/v0.1.0
