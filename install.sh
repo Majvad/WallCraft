@@ -15,7 +15,7 @@ NC='\033[0m'
 echo -e "${BOLD}"
 echo "╔══════════════════════════════════════════════╗"
 echo "║                                              ║"
-echo "║   HyprWall — Wallpaper Manager for Hyprland ║"
+echo "║   WallCraft — Wallpaper Manager for Hyprland ║"
 echo "║          Installer for Arch Linux            ║"
 echo "║                                              ║"
 echo "╚══════════════════════════════════════════════╝"
@@ -56,7 +56,7 @@ if command -v python3 &>/dev/null && [ -f "backend/smart_detector.py" ]; then
         echo -e "  ${GREEN}✓${NC} Recommended profile: ${RECOMMENDED_PROFILE}"
 
         # Save detection results for later use
-        echo "$DETECT_OUTPUT" > /tmp/hyprwall-detection.json
+        echo "$DETECT_OUTPUT" > /tmp/wallcraft-detection.json
     else
         echo -e "  ${YELLOW}⚠ Smart detection failed, using fallback${NC}"
     fi
@@ -211,9 +211,30 @@ echo ""
 echo -e "${CYAN}[3/7]${NC} Building web UI..."
 
 if command -v npm &>/dev/null; then
-    npm install --silent
-    npm run build
-    echo -e "${GREEN}✓${NC} UI built successfully"
+    # Check if already built
+    if [ -d "dist" ] && [ -f "dist/index.html" ]; then
+        echo -e "  ${GREEN}✓${NC} UI already built (dist/ exists)"
+        echo -e "  Skipping build. To rebuild: rm -rf dist && npm run build"
+    else
+        echo -e "  Installing dependencies (this may take 1-2 minutes)..."
+        
+        # Install with progress
+        if [ -d "node_modules" ]; then
+            echo -e "  ${GREEN}✓${NC} node_modules exists, skipping npm install"
+        else
+            npm install --loglevel=error --progress=false 2>&1 | grep -E "(added|updated|audited)" || true
+        fi
+        
+        echo -e "  Building UI..."
+        npm run build 2>&1 | tail -5
+        
+        if [ -d "dist" ] && [ -f "dist/index.html" ]; then
+            echo -e "${GREEN}✓${NC} UI built successfully"
+        else
+            echo -e "${RED}✗${NC} Build failed"
+            echo -e "  Try manually: npm install && npm run build"
+        fi
+    fi
 else
     echo -e "${YELLOW}⚠ npm not found. Skipping UI build.${NC}"
     echo -e "  Install nodejs and npm, then run: npm run build"
@@ -227,10 +248,10 @@ echo ""
 echo -e "${CYAN}[4/7]${NC} Installing files..."
 
 # Directories
-CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hyprwall"
-CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/hyprwall"
-STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/hyprwall"
-LIB_DIR="/usr/local/lib/hyprwall"
+CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/wallcraft"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/wallcraft"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/wallcraft"
+LIB_DIR="/usr/local/lib/wallcraft"
 BIN_DIR="/usr/local/bin"
 SYSTEMD_DIR="${HOME}/.config/systemd/user"
 
@@ -238,8 +259,8 @@ mkdir -p "$CFG_DIR" "$CACHE_DIR" "$STATE_DIR" "$SYSTEMD_DIR"
 
 # Daemon
 sudo mkdir -p "$LIB_DIR"
-sudo install -m 755 backend/hyprwall-daemon.py "$LIB_DIR/hyprwall-daemon.py"
-echo -e "  ${GREEN}✓${NC} Daemon: $LIB_DIR/hyprwall-daemon.py"
+sudo install -m 755 backend/wallcraft-daemon.py "$LIB_DIR/wallcraft-daemon.py"
+echo -e "  ${GREEN}✓${NC} Daemon: $LIB_DIR/wallcraft-daemon.py"
 
 # Smart Detector
 if [ -f "backend/smart_detector.py" ]; then
@@ -248,8 +269,8 @@ if [ -f "backend/smart_detector.py" ]; then
 fi
 
 # CLI
-sudo install -m 755 bin/hyprwall "$BIN_DIR/hyprwall"
-echo -e "  ${GREEN}✓${NC} CLI: $BIN_DIR/hyprwall"
+sudo install -m 755 bin/wallcraft "$BIN_DIR/wallcraft"
+echo -e "  ${GREEN}✓${NC} CLI: $BIN_DIR/wallcraft"
 
 # Web UI
 if [ -d "dist" ]; then
@@ -267,8 +288,8 @@ else
 fi
 
 # Systemd
-cp systemd/hyprwall.service "$SYSTEMD_DIR/hyprwall.service"
-cp systemd/hyprwall-scheduler.timer "$SYSTEMD_DIR/hyprwall-scheduler.timer"
+cp systemd/wallcraft.service "$SYSTEMD_DIR/wallcraft.service"
+cp systemd/wallcraft-scheduler.timer "$SYSTEMD_DIR/wallcraft-scheduler.timer"
 systemctl --user daemon-reload
 echo -e "  ${GREEN}✓${NC} Systemd service installed"
 
@@ -283,17 +304,17 @@ echo -e "${CYAN}[5/7]${NC} Configuring Hyprland integration..."
 HYPRLAND_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.conf"
 
 if [ -f "$HYPRLAND_CONF" ]; then
-    if ! grep -q "hyprwall" "$HYPRLAND_CONF"; then
+    if ! grep -q "wallcraft" "$HYPRLAND_CONF"; then
         echo "" >> "$HYPRLAND_CONF"
-        echo "# HyprWall — Wallpaper Manager" >> "$HYPRLAND_CONF"
-        echo "exec-once = hyprwall start" >> "$HYPRLAND_CONF"
+        echo "# WallCraft — Wallpaper Manager" >> "$HYPRLAND_CONF"
+        echo "exec-once = wallcraft start" >> "$HYPRLAND_CONF"
         echo -e "  ${GREEN}✓${NC} Added to $HYPRLAND_CONF"
     else
         echo -e "  ${GREEN}✓${NC} Already configured in $HYPRLAND_CONF"
     fi
 else
     echo -e "  ${YELLOW}⚠ Hyprland config not found at $HYPRLAND_CONF${NC}"
-    echo -e "  Add manually: exec-once = hyprwall start"
+    echo -e "  Add manually: exec-once = wallcraft start"
 fi
 
 echo ""
@@ -327,14 +348,14 @@ echo ""
 
 echo -e "${CYAN}[7/7]${NC} Applying smart configuration..."
 
-if [ -f /tmp/hyprwall-detection.json ] && [ -f "$CFG_DIR/config.toml" ]; then
+if [ -f /tmp/wallcraft-detection.json ] && [ -f "$CFG_DIR/config.toml" ]; then
     # Generate optimized config based on detection
     python3 -c "
 import json
 import sys
 
 try:
-    with open('/tmp/hyprwall-detection.json') as f:
+    with open('/tmp/wallcraft-detection.json') as f:
         detection = json.load(f)
 
     backend = detection.get('recommended_backend', 'auto')
@@ -370,7 +391,7 @@ except Exception as e:
     print(f'  ⚠ Smart config failed: {e}')
 " 2>/dev/null || echo -e "  ${YELLOW}⚠ Smart config generation failed${NC}"
 
-    rm -f /tmp/hyprwall-detection.json
+    rm -f /tmp/wallcraft-detection.json
 else
     echo -e "  ${YELLOW}⚠ No detection data available, using default config${NC}"
 fi
@@ -389,16 +410,16 @@ echo "║                                              ║"
 echo "║  Quick Start:                                ║"
 echo "║                                              ║"
 echo "║  1. Start the daemon:                        ║"
-echo "║     $ hyprwall start                         ║"
+echo "║     $ wallcraft start                        ║"
 echo "║                                              ║"
 echo "║  2. Open the web UI:                         ║"
-echo "║     $ hyprwall ui                            ║"
+echo "║     $ wallcraft ui                           ║"
 echo "║                                              ║"
 echo "║  3. Set a wallpaper:                         ║"
-echo "║     $ hyprwall set eDP-1 ~/Wallpapers/x.jpg  ║"
+echo "║     $ wallcraft set eDP-1 ~/Wallpapers/x.jpg ║"
 echo "║                                              ║"
 echo "║  4. Or enable auto-start:                    ║"
-echo "║     $ systemctl --user enable hyprwall       ║"
+echo "║     $ systemctl --user enable wallcraft      ║"
 echo "║                                              ║"
 echo "║  Web UI: http://localhost:9520               ║"
 echo "║                                              ║"
@@ -406,9 +427,9 @@ echo "╚═══════════════════════�
 echo -e "${NC}"
 
 echo -e "  ${CYAN}Useful commands:${NC}"
-echo "    hyprwall status       — Check daemon status"
-echo "    hyprwall monitors     — List monitors"
-echo "    hyprwall list         — List wallpapers"
-echo "    hyprwall system       — System information"
-echo "    hyprwall next         — Next wallpaper"
+echo "    wallcraft status       — Check daemon status"
+echo "    wallcraft monitors     — List monitors"
+echo "    wallcraft list         — List wallpapers"
+echo "    wallcraft system       — System information"
+echo "    wallcraft next         — Next wallpaper"
 echo ""

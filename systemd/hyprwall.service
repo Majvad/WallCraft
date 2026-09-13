@@ -1,12 +1,12 @@
 [Unit]
-Description=HyprWall — Wallpaper Manager Daemon
-Documentation=https://github.com/your-username/hyprwall
+Description=WallCraft — Wallpaper Manager Daemon
+Documentation=https://github.com/Majvad/wallcraft
 After=graphical-session.target
 PartOf=graphical-session.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /usr/local/lib/hyprwall/hyprwall-daemon.py --config %C/hyprwall/config.toml --ui-dir /usr/local/lib/hyprwall/ui
+ExecStart=/usr/bin/python3 /usr/local/lib/wallcraft/wallcraft-daemon.py --config %C/wallcraft/config.toml --ui-dir /usr/local/lib/wallcraft/ui
 ExecStop=/bin/kill -TERM $MAINPID
 Restart=on-failure
 RestartSec=5
@@ -15,7 +15,7 @@ RestartSec=5
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=%C/hyprwall %h/.cache/hyprwall %h/.local/state/hyprwall
+ReadWritePaths=%C/wallcraft %h/.cache/wallcraft %h/.local/state/wallcraft
 PrivateTmp=true
 
 # Environment
@@ -26,7 +26,7 @@ Environment=XDG_STATE_HOME=%h/.local/state
 # Logging
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=hyprwall
+SyslogIdentifier=wallcraft
 
 [Install]
 WantedBy=graphical-session.target

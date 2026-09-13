@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-HyprWall Daemon — Backend service for wallpaper management on Hyprland/Wayland.
+WallCraft Daemon — Backend service for wallpaper management on Hyprland/Wayland.
 
 This daemon:
   - Detects the environment (Hyprland, Wayland, available backends)
@@ -10,7 +10,7 @@ This daemon:
   - Provides IPC via Unix socket
 
 Usage:
-  hyprwall-daemon [--port 9520] [--config ~/.config/hyprwall/config.toml]
+  wallcraft-daemon [--port 9520] [--config ~/.config/wallcraft/config.toml]
 """
 
 import os
@@ -43,7 +43,7 @@ except ImportError:
 DEFAULT_CONFIG = {
     "general": {
         "backend": "auto",
-        "cache_dir": os.path.expanduser("~/.cache/hyprwall"),
+        "cache_dir": os.path.expanduser("~/.cache/wallcraft"),
         "auto_start": True,
     },
     "performance": {
@@ -73,9 +73,9 @@ DEFAULT_CONFIG = {
 
 def setup_logging(level_str="info"):
     level = getattr(logging, level_str.upper(), logging.INFO)
-    log_dir = Path(os.path.expanduser("~/.local/state/hyprwall"))
+    log_dir = Path(os.path.expanduser("~/.local/state/wallcraft"))
     log_dir.mkdir(parents=True, exist_ok=True)
-    log_file = log_dir / "hyprwall.log"
+    log_file = log_dir / "wallcraft.log"
 
     logging.basicConfig(
         level=level,
@@ -85,7 +85,7 @@ def setup_logging(level_str="info"):
             logging.StreamHandler(sys.stdout),
         ],
     )
-    return logging.getLogger("hyprwall")
+    return logging.getLogger("wallcraft")
 
 logger = setup_logging()
 
