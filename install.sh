@@ -25,7 +25,7 @@ echo -e "${NC}"
 # Pre-flight checks
 # ============================================================
 
-echo -e "${CYAN}[1/6]${NC} Checking environment..."
+echo -e "${CYAN}[1/7]${NC} Running smart system detection..."
 
 # Check if running as root
 if [ "$EUID" -eq 0 ]; then
@@ -33,40 +33,94 @@ if [ "$EUID" -eq 0 ]; then
     exit 1
 fi
 
-# Check Arch Linux
-if [ ! -f /etc/arch-release ]; then
-    echo -e "${YELLOW}⚠ Not running on Arch Linux. Some steps may need adjustment.${NC}"
+# Run Python smart detector if available
+if command -v python3 &>/dev/null && [ -f "backend/smart_detector.py" ]; then
+    echo -e "  Detecting system configuration..."
+    DETECT_OUTPUT=$(python3 backend/smart_detector.py 2>/dev/null || echo "")
+
+    if [ -n "$DETECT_OUTPUT" ]; then
+        # Parse detection results
+        DISTRO=$(echo "$DETECT_OUTPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['distribution']['pretty_name'])" 2>/dev/null || echo "Unknown")
+        GPU_VENDOR=$(echo "$DETECT_OUTPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['gpu']['vendor'])" 2>/dev/null || echo "unknown")
+        GPU_MODEL=$(echo "$DETECT_OUTPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['gpu']['model'])" 2>/dev/null || echo "Unknown")
+        RECOMMENDED_BACKEND=$(echo "$DETECT_OUTPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['recommended_backend'])" 2>/dev/null || echo "auto")
+        RECOMMENDED_PROFILE=$(echo "$DETECT_OUTPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['recommended_profile'])" 2>/dev/null || echo "default")
+        IS_WAYLAND=$(echo "$DETECT_OUTPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(str(d['environment']['is_wayland']).lower())" 2>/dev/null || echo "false")
+        IS_HYPRLAND=$(echo "$DETECT_OUTPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(str(d['environment']['is_hyprland']).lower())" 2>/dev/null || echo "false")
+        COMPOSITOR=$(echo "$DETECT_OUTPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['environment']['compositor'])" 2>/dev/null || echo "Unknown")
+
+        echo -e "  ${GREEN}✓${NC} Distribution: ${DISTRO}"
+        echo -e "  ${GREEN}✓${NC} GPU: ${GPU_VENDOR} ${GPU_MODEL}"
+        echo -e "  ${GREEN}✓${NC} Compositor: ${COMPOSITOR}"
+        echo -e "  ${GREEN}✓${NC} Recommended backend: ${RECOMMENDED_BACKEND}"
+        echo -e "  ${GREEN}✓${NC} Recommended profile: ${RECOMMENDED_PROFILE}"
+
+        # Save detection results for later use
+        echo "$DETECT_OUTPUT" > /tmp/hyprwall-detection.json
+    else
+        echo -e "  ${YELLOW}⚠ Smart detection failed, using fallback${NC}"
+    fi
+else
+    echo -e "  ${YELLOW}⚠ Smart detector not available, using basic checks${NC}"
 fi
 
-# Check Wayland
+# Fallback checks
 if [ -z "${WAYLAND_DISPLAY:-}" ]; then
-    echo -e "${YELLOW}⚠ Not in a Wayland session. Some features may not work.${NC}"
-    echo -e "  (You can still install, but run 'hyprwall start' from within Hyprland)"
+    echo -e "  ${YELLOW}⚠ Not in a Wayland session. Some features may not work.${NC}"
 fi
 
-# Check Hyprland
 if [ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then
-    echo -e "${YELLOW}⚠ Hyprland not detected. Monitor auto-detection may be limited.${NC}"
+    echo -e "  ${YELLOW}⚠ Hyprland not detected. Monitor auto-detection may be limited.${NC}"
 fi
 
-echo -e "${GREEN}✓${NC} Environment check done"
 echo ""
 
 # ============================================================
 # Install dependencies
 # ============================================================
 
-echo -e "${CYAN}[2/6]${NC} Installing system dependencies..."
+echo -e "${CYAN}[2/7]${NC} Installing system dependencies..."
+
+# Detect package manager
+PKG_MANAGER="unknown"
+if [ -f /etc/arch-release ] || command -v pacman &>/dev/null; then
+    PKG_MANAGER="pacman"
+elif command -v apt &>/dev/null; then
+    PKG_MANAGER="apt"
+elif command -v dnf &>/dev/null; then
+    PKG_MANAGER="dnf"
+elif command -v zypper &>/dev/null; then
+    PKG_MANAGER="zypper"
+fi
+
+echo -e "  Package manager: ${PKG_MANAGER}"
 
 # Check what's already installed
 NEEDED_PACKAGES=()
 OPTIONAL_PACKAGES=()
 
-# Required
-command -v python3 &>/dev/null || NEEDED_PACKAGES+=("python")
-command -v jq &>/dev/null || NEEDED_PACKAGES+=("jq")
-command -v curl &>/dev/null || NEEDED_PACKAGES+=("curl")
-command -v npm &>/dev/null || NEEDED_PACKAGES+=("nodejs" "npm")
+# Required packages based on distro
+if [ "$PKG_MANAGER" = "pacman" ]; then
+    command -v python3 &>/dev/null || NEEDED_PACKAGES+=("python")
+    command -v jq &>/dev/null || NEEDED_PACKAGES+=("jq")
+    command -v curl &>/dev/null || NEEDED_PACKAGES+=("curl")
+    command -v npm &>/dev/null || NEEDED_PACKAGES+=("nodejs" "npm")
+elif [ "$PKG_MANAGER" = "apt" ]; then
+    command -v python3 &>/dev/null || NEEDED_PACKAGES+=("python3")
+    command -v jq &>/dev/null || NEEDED_PACKAGES+=("jq")
+    command -v curl &>/dev/null || NEEDED_PACKAGES+=("curl")
+    command -v npm &>/dev/null || NEEDED_PACKAGES+=("nodejs" "npm")
+elif [ "$PKG_MANAGER" = "dnf" ]; then
+    command -v python3 &>/dev/null || NEEDED_PACKAGES+=("python3")
+    command -v jq &>/dev/null || NEEDED_PACKAGES+=("jq")
+    command -v curl &>/dev/null || NEEDED_PACKAGES+=("curl")
+    command -v npm &>/dev/null || NEEDED_PACKAGES+=("nodejs" "npm")
+elif [ "$PKG_MANAGER" = "zypper" ]; then
+    command -v python3 &>/dev/null || NEEDED_PACKAGES+=("python3")
+    command -v jq &>/dev/null || NEEDED_PACKAGES+=("jq")
+    command -v curl &>/dev/null || NEEDED_PACKAGES+=("curl")
+    command -v npm &>/dev/null || NEEDED_PACKAGES+=("nodejs" "npm")
+fi
 
 # Wallpaper backends (at least one needed)
 HAS_BACKEND=false
@@ -154,7 +208,7 @@ echo ""
 # Build UI
 # ============================================================
 
-echo -e "${CYAN}[3/6]${NC} Building web UI..."
+echo -e "${CYAN}[3/7]${NC} Building web UI..."
 
 if command -v npm &>/dev/null; then
     npm install --silent
@@ -170,7 +224,7 @@ echo ""
 # Install files
 # ============================================================
 
-echo -e "${CYAN}[4/6]${NC} Installing files..."
+echo -e "${CYAN}[4/7]${NC} Installing files..."
 
 # Directories
 CFG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hyprwall"
@@ -218,7 +272,7 @@ echo ""
 # Configure Hyprland
 # ============================================================
 
-echo -e "${CYAN}[5/6]${NC} Configuring Hyprland integration..."
+echo -e "${CYAN}[5/7]${NC} Configuring Hyprland integration..."
 
 HYPRLAND_CONF="${XDG_CONFIG_HOME:-$HOME/.config}/hypr/hyprland.conf"
 
@@ -242,7 +296,7 @@ echo ""
 # Create wallpaper directory
 # ============================================================
 
-echo -e "${CYAN}[6/6]${NC} Setting up wallpaper directory..."
+echo -e "${CYAN}[6/7]${NC} Setting up wallpaper directory..."
 
 WP_DIR="$HOME/Wallpapers"
 if [ ! -d "$WP_DIR" ]; then
@@ -253,6 +307,66 @@ else
     echo -e "  ${GREEN}✓${NC} $WP_DIR already exists"
     wp_count=$(find "$WP_DIR" -type f \( -iname "*.jpg" -o -iname "*.png" -o -iname "*.jpeg" -o -iname "*.mp4" -o -iname "*.webm" \) 2>/dev/null | wc -l)
     echo -e "  Found $wp_count wallpaper files"
+fi
+
+echo ""
+
+# ============================================================
+# Done!
+# ============================================================
+
+# ============================================================
+# Apply smart configuration
+# ============================================================
+
+echo -e "${CYAN}[7/7]${NC} Applying smart configuration..."
+
+if [ -f /tmp/hyprwall-detection.json ] && [ -f "$CFG_DIR/config.toml" ]; then
+    # Generate optimized config based on detection
+    python3 -c "
+import json
+import sys
+
+try:
+    with open('/tmp/hyprwall-detection.json') as f:
+        detection = json.load(f)
+
+    backend = detection.get('recommended_backend', 'auto')
+    profile = detection.get('recommended_profile', 'default')
+    gpu_vendor = detection.get('gpu', {}).get('vendor', 'unknown')
+    accel = detection.get('gpu', {}).get('acceleration_method', 'none')
+
+    # Read existing config
+    with open('$CFG_DIR/config.toml', 'r') as f:
+        config = f.read()
+
+    # Update backend
+    config = config.replace('backend = \"auto\"', f'backend = \"{backend}\"')
+
+    # Update HW accel
+    hw_accel = 'true' if accel != 'none' else 'false'
+    config = config.replace('hw_accel = true', f'hw_accel = {hw_accel}')
+
+    # Adjust for laptop
+    if 'laptop' in profile:
+        config = config.replace('max_cpu = 15', 'max_cpu = 10')
+        config = config.replace('max_gpu = 25', 'max_gpu = 15')
+
+    # Write updated config
+    with open('$CFG_DIR/config.toml', 'w') as f:
+        f.write(config)
+
+    print(f'  ✓ Config optimized for: {profile}')
+    print(f'  ✓ Backend: {backend}')
+    print(f'  ✓ HW Acceleration: {hw_accel}')
+
+except Exception as e:
+    print(f'  ⚠ Smart config failed: {e}')
+" 2>/dev/null || echo -e "  ${YELLOW}⚠ Smart config generation failed${NC}"
+
+    rm -f /tmp/hyprwall-detection.json
+else
+    echo -e "  ${YELLOW}⚠ No detection data available, using default config${NC}"
 fi
 
 echo ""

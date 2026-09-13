@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Page } from './types';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
+import SmartDetect from './pages/SmartDetect';
 import Library from './pages/Library';
 import Monitors from './pages/Monitors';
 import Playlists from './pages/Playlists';
@@ -18,6 +19,7 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard': return <Dashboard />;
+      case 'smart-detect': return <SmartDetect />;
       case 'library': return <Library />;
       case 'monitors': return <Monitors />;
       case 'playlists': return <Playlists />;

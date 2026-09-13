@@ -29,6 +29,13 @@ from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
+# Import smart detector
+try:
+    from smart_detector import SmartDetector
+    HAS_SMART_DETECTOR = True
+except ImportError:
+    HAS_SMART_DETECTOR = False
+
 # ============================================================
 # Configuration
 # ============================================================
@@ -384,10 +391,38 @@ class WallpaperManager:
         self.playlist_index = {}
         self.scheduler_running = False
         self._scheduler_thread = None
+        self.smart_detector = None
+        self.system_profile = None
+
+        # Run smart detection
+        if HAS_SMART_DETECTOR:
+            self._run_smart_detection()
 
         self._init_backends()
         self._select_backend()
         self._scan_wallpapers()
+
+    def _run_smart_detection(self):
+        """Run intelligent system detection."""
+        try:
+            self.smart_detector = SmartDetector()
+            self.system_profile = self.smart_detector.detect_all()
+
+            logger.info(f"System detected:")
+            logger.info(f"  Distribution: {self.system_profile.distribution.pretty_name}")
+            logger.info(f"  GPU: {self.system_profile.gpu.vendor} {self.system_profile.gpu.model}")
+            logger.info(f"  Environment: {self.system_profile.environment.compositor}")
+            logger.info(f"  Recommended backend: {self.system_profile.recommended_backend}")
+            logger.info(f"  Recommended profile: {self.system_profile.recommended_profile}")
+
+            # Auto-configure based on detection
+            if self.config.get("general", {}).get("backend") == "auto":
+                self.config["general"]["backend"] = self.system_profile.recommended_backend
+                logger.info(f"Auto-selected backend: {self.system_profile.recommended_backend}")
+
+        except Exception as e:
+            logger.warning(f"Smart detection failed: {e}")
+            self.smart_detector = None
 
     def _init_backends(self):
         """Initialize available backends."""
@@ -603,6 +638,31 @@ class APIHandler(BaseHTTPRequestHandler):
 
         elif path == "/api/config":
             self._send_json(self.manager.config)
+
+        elif path == "/api/system/detect":
+            # Smart detection endpoint
+            if self.manager.system_profile:
+                self._send_json(self.manager.smart_detector.to_dict())
+            else:
+                self._send_json(EnvironmentDetector.get_system_info())
+
+        elif path == "/api/system/profile":
+            # Get recommended profile
+            if self.manager.system_profile:
+                self._send_json({
+                    "recommended_backend": self.manager.system_profile.recommended_backend,
+                    "recommended_profile": self.manager.system_profile.recommended_profile,
+                    "optimal_config": self.manager.smart_detector.get_optimal_config(),
+                })
+            else:
+                self._send_json({"error": "Smart detection not available"}, 500)
+
+        elif path == "/api/system/install-cmds":
+            # Get installation commands for this distro
+            if self.manager.smart_detector:
+                self._send_json(self.manager.smart_detector.get_install_commands())
+            else:
+                self._send_json({"error": "Smart detection not available"}, 500)
 
         # Static file serving (Web UI)
         elif path == "/" or path == "":

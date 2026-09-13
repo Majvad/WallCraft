@@ -105,4 +105,4 @@ export interface AppConfig {
   logLevel: 'debug' | 'info' | 'warn' | 'error';
 }
 
-export type Page = 'dashboard' | 'library' | 'monitors' | 'playlists' | 'scheduler' | 'settings' | 'system' | 'architecture';
+export type Page = 'dashboard' | 'library' | 'monitors' | 'playlists' | 'scheduler' | 'settings' | 'system' | 'architecture' | 'smart-detect';

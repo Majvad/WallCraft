@@ -348,6 +348,151 @@ cmd_uninstall() {
     log_info "  ${CACHE_DIR}"
 }
 
+cmd_detect() {
+    echo -e "${BOLD}Smart System Detection${NC}"
+    echo ""
+
+    if command -v python3 &>/dev/null; then
+        local script_dir
+        script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        local detector_script="${script_dir}/../backend/smart_detector.py"
+
+        if [ -f "$detector_script" ]; then
+            python3 "$detector_script" 2>/dev/null | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+
+print('Distribution:')
+dist = data.get('distribution', {})
+print(f'  Name: {dist.get(\"pretty_name\", \"Unknown\")}')
+print(f'  Package Manager: {dist.get(\"package_manager\", \"unknown\")}')
+print()
+
+print('GPU:')
+gpu = data.get('gpu', {})
+print(f'  Vendor: {gpu.get(\"vendor\", \"unknown\")}')
+print(f'  Model: {gpu.get(\"model\", \"Unknown\")}')
+print(f'  VRAM: {gpu.get(\"vram\", \"N/A\")}')
+print(f'  Driver: {gpu.get(\"driver\", \"N/A\")}')
+print(f'  Acceleration: {gpu.get(\"acceleration_method\", \"none\")}')
+print(f'  CUDA: {\"✓\" if gpu.get(\"has_cuda\") else \"✗\"}')
+print(f'  VA-API: {\"✓\" if gpu.get(\"has_vaapi\") else \"✗\"}')
+print()
+
+print('Environment:')
+env = data.get('environment', {})
+print(f'  Compositor: {env.get(\"compositor\", \"Unknown\")}')
+print(f'  Wayland: {\"✓\" if env.get(\"is_wayland\") else \"✗\"}')
+print(f'  Hyprland: {\"✓\" if env.get(\"is_hyprland\") else \"✗\"}')
+print()
+
+print('Displays:')
+displays = data.get('displays', [])
+if displays:
+    for d in displays:
+        print(f'  {d.get(\"name\", \"?\")} - {d.get(\"width\", \"?\")}x{d.get(\"height\", \"?\")} @ {d.get(\"refresh_rate\", \"?\")}Hz')
+else:
+    print('  No displays detected')
+print()
+
+print('Tools:')
+tools = data.get('tools', {})
+for tool, installed in tools.items():
+    status = '✓' if installed else '✗'
+    print(f'  {status} {tool}')
+print()
+
+print('Recommendations:')
+print(f'  Backend: {data.get(\"recommended_backend\", \"auto\")}')
+print(f'  Profile: {data.get(\"recommended_profile\", \"default\")}')
+"
+        else
+            log_error "Smart detector not found at $detector_script"
+        fi
+    else
+        log_error "Python3 is required for smart detection"
+    fi
+}
+
+cmd_profile() {
+    local profile_name="${1:-}"
+
+    if [ -z "$profile_name" ]; then
+        echo -e "${BOLD}Available Profiles:${NC}"
+        echo ""
+        echo "  nvidia        - Optimized for NVIDIA GPUs (CUDA acceleration)"
+        echo "  amd           - Optimized for AMD GPUs (VA-API)"
+        echo "  intel         - Optimized for Intel GPUs (QuickSync)"
+        echo "  laptop        - Power-efficient settings for laptops"
+        echo "  nvidia-laptop - NVIDIA GPU with laptop power savings"
+        echo "  performance   - Maximum quality, higher resource usage"
+        echo "  default       - Balanced settings"
+        echo ""
+        echo -e "Usage: ${CYAN}hyprwall profile <name>${NC}"
+        return
+    fi
+
+    local config_file="${CONFIG_DIR}/config.toml"
+
+    if [ ! -f "$config_file" ]; then
+        log_error "Config file not found: $config_file"
+        return 1
+    fi
+
+    case "$profile_name" in
+        nvidia)
+            sed -i 's/backend = .*/backend = "mpv"/' "$config_file"
+            sed -i 's/hw_accel = .*/hw_accel = true/' "$config_file"
+            sed -i 's/max_cpu = .*/max_cpu = 15/' "$config_file"
+            sed -i 's/max_gpu = .*/max_gpu = 25/' "$config_file"
+            log_info "Applied NVIDIA profile (mpv backend, CUDA acceleration)"
+            ;;
+        amd)
+            sed -i 's/backend = .*/backend = "mpv"/' "$config_file"
+            sed -i 's/hw_accel = .*/hw_accel = true/' "$config_file"
+            sed -i 's/max_cpu = .*/max_cpu = 15/' "$config_file"
+            sed -i 's/max_gpu = .*/max_gpu = 25/' "$config_file"
+            log_info "Applied AMD profile (mpv backend, VA-API acceleration)"
+            ;;
+        intel)
+            sed -i 's/backend = .*/backend = "hyprpaper"/' "$config_file"
+            sed -i 's/hw_accel = .*/hw_accel = true/' "$config_file"
+            sed -i 's/max_cpu = .*/max_cpu = 10/' "$config_file"
+            sed -i 's/max_gpu = .*/max_gpu = 20/' "$config_file"
+            log_info "Applied Intel profile (hyprpaper backend, QuickSync)"
+            ;;
+        laptop)
+            sed -i 's/max_cpu = .*/max_cpu = 10/' "$config_file"
+            sed -i 's/max_gpu = .*/max_gpu = 15/' "$config_file"
+            log_info "Applied laptop profile (power-efficient settings)"
+            ;;
+        nvidia-laptop)
+            sed -i 's/backend = .*/backend = "mpv"/' "$config_file"
+            sed -i 's/hw_accel = .*/hw_accel = true/' "$config_file"
+            sed -i 's/max_cpu = .*/max_cpu = 10/' "$config_file"
+            sed -i 's/max_gpu = .*/max_gpu = 15/' "$config_file"
+            log_info "Applied NVIDIA laptop profile (CUDA + power savings)"
+            ;;
+        performance)
+            sed -i 's/max_cpu = .*/max_cpu = 30/' "$config_file"
+            sed -i 's/max_gpu = .*/max_gpu = 50/' "$config_file"
+            log_info "Applied performance profile (maximum quality)"
+            ;;
+        default)
+            sed -i 's/max_cpu = .*/max_cpu = 15/' "$config_file"
+            sed -i 's/max_gpu = .*/max_gpu = 25/' "$config_file"
+            log_info "Applied default profile (balanced settings)"
+            ;;
+        *)
+            log_error "Unknown profile: $profile_name"
+            cmd_profile
+            return 1
+            ;;
+    esac
+
+    log_info "Restart daemon to apply changes: hyprwall restart"
+}
+
 cmd_help() {
     echo -e "${BOLD}HyprWall v${VERSION} — Wallpaper Manager for Hyprland${NC}"
     echo ""
@@ -363,6 +508,8 @@ cmd_help() {
     echo "  next [monitor]     Switch to next wallpaper"
     echo "  list               List available wallpapers"
     echo "  system             Show system information"
+    echo "  detect             Run smart system detection"
+    echo "  profile [name]     Apply or list profiles"
     echo "  ui                 Open web interface"
     echo "  install            Install daemon and service"
     echo "  uninstall          Remove HyprWall"
@@ -374,6 +521,8 @@ cmd_help() {
     echo ""
     echo -e "${BOLD}Examples:${NC}"
     echo "  hyprwall start"
+    echo "  hyprwall detect"
+    echo "  hyprwall profile nvidia"
     echo "  hyprwall set eDP-1 ~/Wallpapers/image.jpg"
     echo "  hyprwall next"
     echo "  hyprwall ui"
@@ -394,6 +543,8 @@ case "${1:-help}" in
     next)       shift; cmd_next "$@" ;;
     list|ls)    cmd_list ;;
     system|sys) cmd_system ;;
+    detect)     cmd_detect ;;
+    profile)    shift; cmd_profile "$@" ;;
     ui|web)     cmd_ui ;;
     install)    cmd_install ;;
     uninstall)  cmd_uninstall ;;

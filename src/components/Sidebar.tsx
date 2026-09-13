@@ -9,6 +9,7 @@ import {
   Cpu,
   GitBranch,
   Terminal,
+  Brain,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -18,6 +19,7 @@ interface SidebarProps {
 
 const navItems: { page: Page; label: string; icon: React.ReactNode }[] = [
   { page: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+  { page: 'smart-detect', label: 'Smart Detect', icon: <Brain size={20} /> },
   { page: 'library', label: 'Library', icon: <Image size={20} /> },
   { page: 'monitors', label: 'Monitors', icon: <Monitor size={20} /> },
   { page: 'playlists', label: 'Playlists', icon: <ListMusic size={20} /> },

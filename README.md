@@ -1,30 +1,71 @@
-# HyprWall — Wallpaper Manager for Hyprland/Wayland
+# 🖼️ HyprWall
 
-A professional wallpaper manager designed for Arch Linux + Hyprland + Wayland systems.
+<div align="center">
 
-## Features
+**Professional Wallpaper Manager for Hyprland & Wayland**
 
-- 🖼️ Static image wallpapers (via hyprpaper)
-- 🎬 Video wallpapers (via mpv with hardware acceleration)
-- 🔄 Wallpaper rotation with playlists
-- ⏰ Time-based scheduling (systemd timers)
-- 🖥️ Per-monitor wallpaper assignment
-- 🎨 Smooth transitions (via swww)
-- ⚡ Hardware acceleration (NVIDIA VA-API/CUDA)
-- 🌐 Web-based control panel
-- 🔌 CLI and IPC control
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Arch Linux](https://img.shields.io/badge/Arch%20Linux-1793D1?logo=arch-linux&logoColor=white)](https://archlinux.org)
+[![Hyprland](https://img.shields.io/badge/Hyprland-00AA99?logo=hyprland&logoColor=white)](https://hyprland.org)
+[![Wayland](https://img.shields.io/badge/Wayland-Native-blue)](https://wayland.freedesktop.org)
+[![Python](https://img.shields.io/badge/Python-3.8+-blue?logo=python&logoColor=white)](https://www.python.org)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://reactjs.org)
 
-## System Requirements
+[Installation](#-quick-install) • [Features](#-features) • [Usage](#-usage) • [Configuration](#-configuration) • [Architecture](#-architecture) • [Contributing](#-contributing)
 
-- Arch Linux (or Arch-based)
-- Hyprland (Wayland compositor)
-- One of: hyprpaper, swww, mpv
+</div>
 
-## Quick Install
+---
+
+## ✨ Features
+
+### 🎨 Wallpaper Management
+- **Static Images** — JPG, PNG, WebP, BMP via hyprpaper
+- **Video Wallpapers** — MP4, MKV, WebM via mpv with hardware acceleration
+- **Animated GIFs** — Via swww backend
+- **GLSL Shaders** — Custom shader-based wallpapers
+- **Multi-Monitor** — Different wallpaper per display
+- **Per-Monitor Control** — Set/unset wallpapers independently
+
+### 🔄 Automation
+- **Playlists** — Sequential, random, or shuffle rotation
+- **Time-Based Scheduling** — Change wallpapers based on time of day
+- **Systemd Integration** — Reliable timers and auto-start
+- **Smart Detection** — Auto-configure based on your hardware and distro
+
+### ⚡ Performance
+- **Hardware Acceleration** — NVIDIA CUDA/VA-API, AMD VA-API, Intel QuickSync
+- **Resource Limits** — Configurable CPU/GPU usage caps
+- **Smart Backend Selection** — Automatically chooses the best backend
+- **Efficient Caching** — Thumbnail and preview caching
+
+### 🌐 Interface
+- **Web UI** — Modern React-based control panel
+- **CLI** — Full-featured command-line interface
+- **IPC** — Unix socket for programmatic control
+- **REST API** — HTTP API on localhost:9520
+
+### 🧠 Smart System
+- **Auto-Detection** — Detects distro, hardware, and capabilities
+- **Adaptive Configuration** — Adjusts settings based on your system
+- **Backend Intelligence** — Selects optimal backend for your use case
+- **Profile System** — Pre-configured profiles for common setups
+
+---
+
+## 🚀 Quick Install
+
+### One-Line Install (Arch Linux)
+
+```bash
+git clone https://github.com/yourusername/hyprwall.git && cd hyprwall && chmod +x install.sh && ./install.sh
+```
+
+### Manual Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/hyprwall.git
+git clone https://github.com/yourusername/hyprwall.git
 cd hyprwall
 
 # Run the installer
@@ -32,163 +73,380 @@ chmod +x install.sh
 ./install.sh
 ```
 
-## Manual Installation
+The installer will:
+- ✅ Detect your Linux distribution
+- ✅ Check hardware (NVIDIA/AMD/Intel)
+- ✅ Install required dependencies
+- ✅ Build the web UI
+- ✅ Configure Hyprland integration
+- ✅ Enable systemd services
 
-### 1. Install Dependencies
+---
 
-```bash
-# Required (at least one backend)
-sudo pacman -S hyprpaper swww mpv ffmpeg imagemagick
+## 📖 Usage
 
-# Optional but recommended
-sudo pacman -S jq bc python python-flask python-flask-cors
-```
-
-### 2. Build the UI
-
-```bash
-npm install
-npm run build
-```
-
-### 3. Install Files
+### Start the Daemon
 
 ```bash
-sudo make install
-# or manually:
-sudo cp bin/hyprwall /usr/local/bin/
-sudo cp bin/hyprwall-daemon /usr/local/bin/
-mkdir -p ~/.config/hyprwall
-cp config/config.toml.example ~/.config/hyprwall/config.toml
-```
+# Start manually
+hyprwall start
 
-### 4. Enable Service
-
-```bash
+# Or enable auto-start
 systemctl --user enable --now hyprwall.service
 ```
 
-### 5. Add to Hyprland Config
+### Set a Wallpaper
 
 ```bash
-# Add to ~/.config/hypr/hyprland.conf
-exec-once = hyprwall start
+# Set wallpaper for laptop display
+hyprwall set eDP-1 ~/Wallpapers/image.jpg
+
+# Set for external monitor
+hyprwall set HDMI-A-1 ~/Wallpapers/video.mp4
 ```
 
-## Usage
-
-### Web UI
+### Manage Playlists
 
 ```bash
-# Start the web interface
-hyprwall ui
-# Opens at http://localhost:9520
-```
-
-### CLI
-
-```bash
-# Set wallpaper for a monitor
-hyprwall set eDP-1 /path/to/wallpaper.jpg
-
-# List monitors
-hyprwall monitors
-
-# List wallpapers
-hyprwall list
-
-# Next wallpaper in playlist
+# Next wallpaper in rotation
 hyprwall next
 
 # Previous wallpaper
 hyprwall prev
 
-# Pause/resume rotation
+# Pause rotation
 hyprwall pause
-hyprwall resume
 
-# Show status
-hyprwall status
+# Resume rotation
+hyprwall resume
 ```
 
-## Configuration
+### Web UI
 
-Edit `~/.config/hyprwall/config.toml`:
+```bash
+# Open the web interface
+hyprwall ui
+
+# Or visit manually
+# http://localhost:9520
+```
+
+### CLI Commands
+
+```bash
+hyprwall status       # Show daemon status
+hyprwall monitors     # List connected monitors
+hyprwall list         # List available wallpapers
+hyprwall system       # Show system information
+hyprwall config       # Show current configuration
+hyprwall stop         # Stop the daemon
+hyprwall restart      # Restart the daemon
+```
+
+---
+
+## ⚙️ Configuration
+
+Configuration file: `~/.config/hyprwall/config.toml`
+
+### Basic Configuration
 
 ```toml
 [general]
-backend = "hyprpaper"
+backend = "auto"              # auto, hyprpaper, swww, mpv
 cache_dir = "~/.cache/hyprwall"
 auto_start = true
-
-[performance]
-hw_accel = true
-max_cpu = 15
-max_gpu = 25
-
-[transition]
-effect = "fade"
-duration = 800
 
 [directories]
 wallpapers = [
     "~/Wallpapers",
     "~/Pictures/Wallpapers",
-    "/usr/share/backgrounds"
 ]
 
-[logging]
-level = "info"
+[transition]
+effect = "fade"               # fade, slide, wipe, blur, none
+duration = 800                # milliseconds
+
+[performance]
+hw_accel = true               # Enable hardware acceleration
+max_cpu = 15                  # Max CPU usage %
+max_gpu = 25                  # Max GPU usage %
 ```
 
-## Backend Selection
+### Smart Profiles
 
-| Backend  | Static | Video | Transitions | HW Accel | IPC |
-|----------|--------|-------|-------------|----------|-----|
-| hyprpaper|   ✓    |   ✗   |     ✗       |    ✗     |  ✓  |
-| swww     |   ✓    |   ~   |     ✓       |    ~     |  ✓  |
-| mpv      |   ✓    |   ✓   |     ✗       |    ✓     |  ✓  |
-
-## Uninstall
+HyprWall includes pre-configured profiles for common setups:
 
 ```bash
-systemctl --user stop hyprwall.service
-systemctl --user disable hyprwall.service
-sudo rm /usr/local/bin/hyprwall
-sudo rm /usr/local/bin/hyprwall-daemon
-rm -rf ~/.config/hyprwall
-rm -rf ~/.cache/hyprwall
-rm -rf ~/.local/state/hyprwall
+# Use NVIDIA profile (optimized for RTX/GTX cards)
+hyprwall profile nvidia
+
+# Use AMD profile (optimized for Radeon cards)
+hyprwall profile amd
+
+# Use Intel profile (optimized for integrated graphics)
+hyprwall profile intel
+
+# Use low-power profile (laptop on battery)
+hyprwall profile laptop
+
+# Use performance profile (desktop, max quality)
+hyprwall profile performance
 ```
 
-## Architecture
+### Advanced Configuration
+
+```toml
+[scheduler]
+enabled = true
+check_interval = 300          # Check schedule every 5 minutes
+
+[[schedules]]
+name = "Night Mode"
+time_start = "20:00"
+time_end = "07:00"
+playlist = "night-vibes"
+days = [0, 1, 2, 3, 4, 5, 6]
+
+[[schedules]]
+name = "Work Hours"
+time_start = "09:00"
+time_end = "17:00"
+wallpaper = "~/Wallpapers/minimal.jpg"
+days = [1, 2, 3, 4, 5]
+
+[api]
+host = "127.0.0.1"
+port = 9520
+
+[logging]
+level = "info"                # debug, info, warn, error
+```
+
+---
+
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  HyprWall — Wallpaper Manager for Hyprland/Wayland         │
+│                    HyprWall Architecture                     │
 ├─────────────────────────────────────────────────────────────┤
-│                                                             │
+│                                                              │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
 │  │  Web UI  │  │   CLI    │  │   IPC    │  │ Systemd  │   │
-│  │ (React)  │  │(hyprwall)│  │(Unix Sock)│  │ (Timers) │   │
+│  │ (React)  │  │  (Bash)  │  │ (Socket) │  │ (Timers) │   │
 │  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘   │
 │       │               │               │               │     │
 │       └───────────────┴───────┬───────┴───────────────┘     │
 │                               │                             │
-│                       ┌───────┴────────┐                    │
-│                       │  Core Engine   │                    │
-│                       │  (Python/Bash) │                    │
-│                       └───────┬────────┘                    │
+│                    ┌──────────┴──────────┐                  │
+│                    │   Smart Detector    │                  │
+│                    │  (Distro + Hardware)│                  │
+│                    └──────────┬──────────┘                  │
 │                               │                             │
 │                    ┌──────────┴──────────┐                  │
-│                    │  Backend Abstraction │                  │
-│                    └──┬────┬────┬────┬───┘                  │
-│                    ┌──┴┐ ┌┴───┐┌┴───┐┌┴────┐               │
-│                    │HP │ │SWWW││MPV ││Cust │               │
-│                    └───┘ └────┘└────┘└─────┘               │
+│                    │   Core Engine       │                  │
+│                    │  (Python Daemon)    │                  │
+│                    └──────────┬──────────┘                  │
+│                               │                             │
+│              ┌────────────────┼────────────────┐           │
+│              │                │                │           │
+│        ┌─────┴─────┐   ┌─────┴─────┐   ┌─────┴─────┐    │
+│        │ hyprpaper │   │   swww    │   │    mpv    │    │
+│        │  (Static) │   │(Animated) │   │  (Video)  │    │
+│        └───────────┘   └───────────┘   └───────────┘    │
+│                                                           │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## License
+### Smart Detection System
 
-MIT
+HyprWall automatically detects and configures:
+
+| Component | Detection | Action |
+|-----------|-----------|--------|
+| **Distro** | `/etc/os-release` | Package manager selection |
+| **GPU** | `lspci`, `nvidia-smi` | Backend & acceleration |
+| **Display** | `hyprctl monitors` | Monitor configuration |
+| **Desktop** | Environment variables | Integration method |
+| **Tools** | `which` command | Backend availability |
+
+### Backend Selection Logic
+
+```python
+if NVIDIA_GPU and VIDEO_WALLPAPERS:
+    backend = "mpv"  # CUDA acceleration
+elif HYPRPAPER_AVAILABLE:
+    backend = "hyprpaper"  # Best for static
+elif SWWW_AVAILABLE:
+    backend = "swww"  # Transitions
+else:
+    backend = "fallback"  # Basic functionality
+```
+
+---
+
+## 🔧 Development
+
+### Prerequisites
+
+```bash
+# Arch Linux
+sudo pacman -S python nodejs npm git
+
+# Fedora
+sudo dnf install python3 nodejs npm git
+
+# Ubuntu/Debian
+sudo apt install python3 nodejs npm git
+```
+
+### Setup Development Environment
+
+```bash
+# Clone repository
+git clone https://github.com/yourusername/hyprwall.git
+cd hyprwall
+
+# Install dependencies
+npm install
+
+# Build UI
+npm run build
+
+# Run daemon in development mode
+make dev
+```
+
+### Project Structure
+
+```
+hyprwall/
+├── backend/
+│   └── hyprwall-daemon.py    # Python daemon
+├── bin/
+│   └── hyprwall              # CLI wrapper
+├── src/
+│   ├── components/           # React components
+│   ├── pages/                # UI pages
+│   ├── types/                # TypeScript types
+│   └── App.tsx               # Main app
+├── config/
+│   └── config.toml.example   # Config template
+├── systemd/
+│   ├── hyprwall.service      # Systemd service
+│   └── hyprwall-scheduler.timer
+├── install.sh                # Installer script
+├── Makefile                  # Build automation
+└── README.md                 # This file
+```
+
+### Testing
+
+```bash
+# Check dependencies
+make check
+
+# Run tests (future)
+make test
+
+# Lint code
+make lint
+```
+
+---
+
+## 📦 Supported Systems
+
+### Linux Distributions
+
+| Distro | Status | Notes |
+|--------|--------|-------|
+| **Arch Linux** | ✅ Full Support | Primary target |
+| **EndeavourOS** | ✅ Full Support | Arch-based |
+| **Manjaro** | ✅ Full Support | Arch-based |
+| **Fedora** | ✅ Supported | Auto-detection |
+| **Ubuntu** | ✅ Supported | Auto-detection |
+| **Debian** | ✅ Supported | Auto-detection |
+| **openSUSE** | ✅ Supported | Auto-detection |
+
+### Hardware
+
+| GPU | Support | Acceleration |
+|-----|---------|--------------|
+| **NVIDIA** (RTX/GTX) | ✅ Full | CUDA, VA-API |
+| **AMD** (Radeon) | ✅ Full | VA-API |
+| **Intel** (UHD/Iris) | ✅ Full | QuickSync |
+
+### Desktop Environments
+
+| DE/WM | Support | Notes |
+|-------|---------|-------|
+| **Hyprland** | ✅ Full | Primary target |
+| **Sway** | ✅ Full | Wayland |
+| **River** | ✅ Full | Wayland |
+| **GNOME** | ⚠️ Limited | Wayland only |
+| **KDE** | ⚠️ Limited | Wayland only |
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+### Quick Start for Contributors
+
+```bash
+# Fork the repository on GitHub
+# Clone your fork
+git clone https://github.com/YOUR_USERNAME/hyprwall.git
+cd hyprwall
+
+# Create a feature branch
+git checkout -b feature/amazing-feature
+
+# Make your changes
+# ...
+
+# Commit your changes
+git commit -m 'Add amazing feature'
+
+# Push to the branch
+git push origin feature/amazing-feature
+
+# Open a Pull Request
+```
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- [Hyprland](https://hyprland.org) — For the amazing Wayland compositor
+- [hyprpaper](https://github.com/hyprwm/hyprpaper) — For static wallpaper support
+- [swww](https://github.com/LGFae/swww) — For animated wallpaper support
+- [mpv](https://mpv.io) — For video playback
+- The Arch Linux community
+
+---
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/yourusername/hyprwall/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/hyprwall/discussions)
+- **Wiki**: [GitHub Wiki](https://github.com/yourusername/hyprwall/wiki)
+
+---
+
+<div align="center">
+
+**Made with ❤️ for the Hyprland community**
+
+⭐ Star this repo if you find it useful!
+
+</div>
